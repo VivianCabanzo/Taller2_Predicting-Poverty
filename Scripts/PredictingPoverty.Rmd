@@ -4,7 +4,7 @@ author: "Cristian Muñoz - Vivian Cabanzo - Zenneth Olivero - Laura Diaz"
 date: "2025-09-30"
 output: html_document
 ---
-
+   
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
