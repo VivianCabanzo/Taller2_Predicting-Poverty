@@ -4,11 +4,11 @@ author: "Cristian Muñoz - Vivian Cabanzo - Zenneth Olivero - Laura Diaz"
 date: "2025-09-30"
 output: html_document
 ---
-   
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-   
+
 # Predicting Poverty
 
 # Predicción de Pobreza en Colombia
@@ -50,7 +50,12 @@ pacman::p_load(
   labelled,      # Manejo de etiquetas
   tibble,        # Tablas en consola
   kableExtra,    # Mejorar tablas
-  stringi        # Convertir Carácteres
+  stringi,        # Convertir Carácteres
+  glmnet,        #Algoritmos de regularización
+  rpart,         # Arboles de decisión
+  rpart.plot,    # Gráfico de arboles
+  caret,         # Estimación de modelos predictivos
+  Metrics       # Evaluación de modelos predictivos
 )
 
 # Verificar paquetes cargados
@@ -205,19 +210,17 @@ Se presenta la comparación de variables entre las muestras de entrenamiento y d
 
 En conjunto, esta tabla complementa el análisis previo y constituye una herramienta fundamental para orientar las decisiones de limpieza, imputación y selección de variables en la construcción del modelo de predicción de pobreza.
 
-Por otra parte, es fundamental que las bases de datos de entrenamiento y de prueba utilicen el mismo conjunto de variables explicativas, esto se debe a que el modelo predictivo aprende una función definida en un espacio de características específico; si en la etapa de predicción se presentan variables distintas a las utilizadas en el entrenamiento, los modelos a plantear carecerían de la información necesaria para generar resultados válidos. 
+Por otra parte, es fundamental que las bases de datos de entrenamiento y de prueba utilicen el mismo conjunto de variables explicativas, esto se debe a que el modelo predictivo aprende una función definida en un espacio de características específico; si en la etapa de predicción se presentan variables distintas a las utilizadas en el entrenamiento, los modelos a plantear carecerían de la información necesaria para generar resultados válidos.
 
 De igual forma, la inclusión de variables adicionales en el entrenamiento que no están presentes en la prueba impide evaluar correctamente la capacidad de predicción de modelos. Es importante resaltar que, la variable objetivo "Pobre" está disponible únicamente en la base de entrenamiento y no en la base de prueba, ya que el propósito principal del analisis es generar predicciones de pobreza a partir de datos conocidos.
 
 Teniendo en cuenta lo anterior, en primera instancia, se define a un hogar como pobre cuando el ingreso del hogar es inferior a la "Linea de Pobreza", como se define a continuación:
 
-$$
-\
-Pobre = I \cdot (Ingreso < \text{Línea de Pobreza})
-\
+\$\$\
+Pobre = I \cdot (Ingreso \< \text{Línea de Pobreza})\
+\$\$
 
-$$
-Se asigna el valor de la variable "Pobre" de acuerdo con el resultado de la función que precede, 
+Se asigna el valor de la variable "Pobre" de acuerdo con el resultado de la función que precede,
 
 $$
 \
@@ -229,8 +232,7 @@ I(\text{Función indicadora}) =
 1, & \text{Ingreso inferior a la linea de pobreza = Pobre}
 \end{cases}
 \
-$$
-De acuerdo con la definición anterior, se seleccionan en la base de datos de entrenamiento aquellas variables que se encuentran en la base de prueba y se mantiene la variable objetivo "Pobre", con la cual se entrenarán los diferentes modelos para realizar predicciones en la base de prueba.
+$$ De acuerdo con la definición anterior, se seleccionan en la base de datos de entrenamiento aquellas variables que se encuentran en la base de prueba y se mantiene la variable objetivo "Pobre", con la cual se entrenarán los diferentes modelos para realizar predicciones en la base de prueba.
 
 ```{r}
 # Variables en común entre train y test
@@ -248,6 +250,7 @@ cat("Número de variables en train original:", ncol(train_hogares), "\n")
 cat("Número de variables en train depurado:", ncol(train_hogares2), "\n")
 
 ```
+
 Al realizar la depuración inicial se exploran las variables restantes, con el objetivo de comprenderlas a fondo y definir su relevancia dentro de la prediccion de pobreza de los hogares.
 
 ```{r}
@@ -367,6 +370,7 @@ print(grafico_faltantes)
 ggsave("Faltantes_Train.pdf", grafico_faltantes, width = 10, height = 6)
 
 ```
+
 La gráfica que precede, ofrece una visión más precisa de la calidad de los datos, resaltando aquellas variables con un porcentaje considerable de valores faltantes que podrían comprometer el desempeño de los modelos predictivos. Se evidencia un alto porcentaje de datos faltantes en las mismas variables para las dos bases, a saber, el valor estimado en caso de pagar arriendo en una vivienda, la cuota de amortización por crédito hipotecario y el valor actual del arriendo, por lo que dichas variables podrian omitirse en ambas bases.
 
 Adicionalmente, las demás variables no presentan datos faltantes, sin embargo, "id", "Clase", "Dominio" y "Depto" son atributos de identificacion por lo que no se usarán como posibles predictoras aunque se mantengan en la base.
@@ -472,7 +476,6 @@ ggsave("Resumen_Faltantes_Train_vs_Test_Personas.pdf", grafico_resumen, width = 
 
 ```
 
-
 De acuerdo con la grafica, existen 45 variables con mas del 50% de valores faltantes en las dos bases a nivel de personas, por lo que no es procedente tenerlas en cuenta para el entrenamiento. Por su parte, 18 variables se revisarán.
 
 ```{r}
@@ -529,7 +532,6 @@ tabla_faltantes <- faltantes_interes %>%
 tabla_faltantes
 
 ```
-
 
 ```{r}
 # Renombrar variables en test_personas igual que en train_personas
@@ -604,8 +606,7 @@ ggsave("Faltantes_Train_vs_Test_Personas.pdf", grafico_faltantes_p, width = 10, 
 
 ### - Base de Entrenamiento Final
 
-La base de datos de entrenamiento definitiva para las predicciones de pobreza a nivel de hogares es:
-train_hogares_final
+La base de datos de entrenamiento definitiva para las predicciones de pobreza a nivel de hogares es: train_hogares_final
 
 ```{r}
 # Seleccionar variables de hogares
@@ -625,7 +626,9 @@ train_hogares_final <- train_hogares_sel %>%
 glimpse(train_hogares_final)
 
 ```
+
 revision de datos faltantes;
+
 ```{r}
 faltantes_train_final <- train_hogares_final %>%
   summarise(across(everything(), ~sum(is.na(.)))) %>%
@@ -645,11 +648,9 @@ faltantes_train_final %>%
   )
 ```
 
-
 ### - Base de Prueba Final
 
-La base de datos de prueba definitiva para las predicciones de pobreza a nivel de gares es:
-test_hogares_final
+La base de datos de prueba definitiva para las predicciones de pobreza a nivel de gares es: test_hogares_final
 
 ```{r}
 
@@ -720,8 +721,8 @@ cat("Faltantes en train_hogares_final:", sum(is.na(train_hogares_final$Actividad
 cat("Faltantes en test_hogares_final:", sum(is.na(test_hogares_final$Actividad_Ocup)), "\n")
 ```
 
-
 ### 2.2. Estadísticas descriptivas
+
 Tabla de estadisticas descriptivas de las bases de datos a nivel de hogares.
 
 ```{r}
@@ -762,8 +763,6 @@ tabla_vars_final %>%
 
 ```
 
-
-
 ## 3. Modelos y Resultados
 
 ```{r}
@@ -771,9 +770,66 @@ train_hogares_final
 test_hogares_final
 ```
 
-
-
 ### 3.1. Seleccion de modelos y entrenamiento
+
+En esta sección se realizará la evaluación de los modelos de predicción.
+
+####  Modelo Carts
+
+El modelo CART utiliza un árbol de decisión binario para predecir la condición de pobreza de los hogares.
+Divide los datos en grupos cada vez más homogéneos según variables como tipo de vivienda, nivel educativo, número de personas y ocupación del jefe del hogar.
+
+Cada división se elige para maximizar la pureza de las clases (pobres o no pobres) y el árbol se poda para evitar sobreajuste.
+
+
+```{r}
+#  Entrenar el modelo CART
+modelo_cart <- rpart(
+  Pobre ~ Clase + Dominio + Tipo_vivienda + Nper + Depto + 
+    Parentesco_jefe + Sexo + Edad + Nivel_educativo + Actividad_Ocup,
+  data = train_hogares_final,
+  method = "class",               
+  cp = 0  
+)
+
+prp(modelo_cart)
+```
+
+
+```{r}
+
+# --- 7️⃣ Visualizar el árbol ---
+rpart.plot(modelo_cart,
+           type = 3,           # nodos con texto y ramas claras
+           extra = 101,        # muestra clase y probabilidad
+           fallen.leaves = TRUE,
+           main = "Árbol de Decisión - Predicción de Pobreza")
+
+# --- 8️⃣ Evaluar desempeño ---
+# Predicciones sobre el conjunto de prueba
+pred_cart <- predict(modelo_cart, newdata = test, type = "class")
+
+# Matriz de confusión
+confusionMatrix(pred_cart, test$Pobre, positive = "Pobre")
+
+# --- 9️⃣ Importancia de variables ---
+modelo_cart$variable.importance
+
+# --- 🔟 (Opcional) Validación cruzada ---
+ctrl <- trainControl(method = "cv", number = 10)
+modelo_cv <- train(
+  Pobre ~ Clase + Dominio + Tipo_vivienda + Nper + Depto +
+    Parentesco_jefe + Sexo + Edad + Nivel_educativo + Actividad_Ocup,
+  data = train,
+  method = "rpart",
+  trControl = ctrl,
+  tuneLength = 10
+)
+
+# Mostrar resultados de validación cruzada
+print(modelo_cv)
+plot(modelo_cv)
+```
 
 ### 3.2. Hiperparametros
 
@@ -782,19 +838,3 @@ test_hogares_final
 ### 3.4. Importancia de las caracteristicas
 
 ## 4. Conclusiones
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
