@@ -172,21 +172,21 @@ Adicionalmente, se identifican 7 variables exclusivas de la base de entrenamient
 
 A cotinuación se presenta la comparación de variables entre las muestras de entrenamiento y de prueba a nivel de hogares, se examinan de manera sistemática aspectos como el tipo de dato para identificar la consistencia en el tipo de variables en ambas bases de datos.
 
+
 ```{r}
-# Función para crear diccionario de un dataset
-tipo_var_hogares <- function(df, nombre_df) {
+# Función: obtener tipo de variable para un dataset
+tipo_var_hogares <- function(df) {
   map_dfr(names(df), function(var) {
-    x <- df[[var]]
     tibble(
       Variable = var,
-      Tipo = class(x)[1]
+      Tipo = class(df[[var]])[1]
     )
   })
 }
 
-# Crear diccionarios
-var_train_hog <- tipo_var_hogares(train_hogares, "train")
-var_test_hog  <- tipo_var_hogares(test_hogares, "test")
+# Calcular tipos para train y test
+var_train_hog <- tipo_var_hogares(train_hogares)
+var_test_hog <- tipo_var_hogares(test_hogares)
 
 # Unir en una sola tabla comparativa
 comb_tipo_var_hog <- full_join(
@@ -219,8 +219,8 @@ comb_tipo_var_hog <- comb_tipo_var_hog %>%
   ) %>%
   cols_label(
     Variable = "Variable",
-    Tipo_train = "Tipo (Train)",
-    Tipo_test = "Tipo (Test)"
+    Tipo_train = "Tipo de variable",
+    Tipo_test = "Tipo de variable"
   )
 
 # Mostrar en pantalla
@@ -250,7 +250,6 @@ $$
 \
 Pobre = I \cdot (Ingreso < \text{Línea de Pobreza})
 \
-
 $$
 Se asigna el valor de la variable "Pobre" de acuerdo con el resultado de la función que precede, 
 
@@ -265,6 +264,8 @@ I(\text{Función indicadora}) =
 \end{cases}
 \
 $$
+
+
 De acuerdo con la definición anterior, se seleccionan en la base de datos de entrenamiento aquellas variables que se encuentran en la base de prueba y se mantiene la variable objetivo "Pobre", con la cual se entrenarán los diferentes modelos para realizar predicciones en la base de prueba.
 
 ```{r}
@@ -272,11 +273,11 @@ De acuerdo con la definición anterior, se seleccionan en la base de datos de en
 vars_comunes_hog
 
 # Mantener las variables comunes y "Pobre"
-vars_unidas <- c(vars_comunes_hog, "Pobre")
+vars_comunes_hog <- c(vars_comunes_hog, "Pobre")
 
 # Filtro de train_hogares
 train_hogares2 <- train_hogares %>%
-  select(all_of(vars_unidas))
+  select(all_of(vars_comunes_hog))
 
 # Verificar
 cat("Número de variables en train original:", ncol(train_hogares), "\n")
@@ -287,7 +288,7 @@ Al realizar la depuración inicial se exploran las variables restantes, con el o
 
 
 ```{r}
-# Renombrar variables en train_hogares2 (ya lo tienes hecho)
+# Renombrar variables en train_hogares2
 train_hogares2 <- train_hogares2 %>%
   rename(
     Total_habitaciones = P5000,
@@ -398,7 +399,7 @@ faltantes_comp_hog <- bind_rows(faltantes_train_hog, faltantes_test_hog)
 # Reordenar factores id, Clase, Dominio y Depto 
 orden_vars <- c(setdiff(unique(faltantes_comp_hog$Variable), 
                         c("Depto", "Dominio","Clase", "id")),
-                "Depto", "Dominio","Clase", "id")
+                      "Depto", "Dominio","Clase", "id")
 
 faltantes_comp_hog <- faltantes_comp_hog %>%
   mutate(Variable = factor(Variable, levels = orden_vars))
@@ -438,6 +439,7 @@ ggsave(
 
 
 ```
+
 
 La gráfica que precede, ofrece una visión más precisa de la calidad de los datos, resaltando aquellas variables con un porcentaje considerable de valores faltantes que podrían comprometer el desempeño de los modelos predictivos. Se evidencia un alto porcentaje de datos faltantes en las mismas variables para las dos bases, a saber, el valor estimado en caso de pagar arriendo en una vivienda, la cuota de amortización por crédito hipotecario y el valor actual del arriendo, por lo que dichas variables podrian omitirse en ambas bases.
 
@@ -636,8 +638,6 @@ webshot2::webshot(
 gtsave(tabla_faltantes_pers, "Tablas y Graficos/7.Faltantes_Train_vs_Test_0a30.png")
 
 ```
-
-
 ```{r}
 # Renombrar variables en ambos datasets (train y test)
 renombrar_personas <- function(df) {
@@ -746,7 +746,6 @@ ggsave(
 )
 
 ```
-
 ### - Base de Entrenamiento Final
 
 La base de datos de entrenamiento definitiva para las predicciones de pobreza a nivel de hogares es:
@@ -766,38 +765,78 @@ jefes_hogar <- train_personas2 %>%
 train_hogares_final <- train_hogares_sel %>%
   left_join(jefes_hogar, by = "id")
 
+# Filtrar niveles 
+train_hogares_final<- train_hogares_final%>%
+  filter(!(Nivel_educativo %in% c("No sabe, no informa"))) %>%
+  mutate(
+    Nivel_educativo = case_when(
+      Nivel_educativo == "Ninguno" ~ "Ninguno",
+      Nivel_educativo %in% c("Preescolar", "Básica primaria", "Básica secundaria", "Media") ~ "Máximo bachiller",
+      Nivel_educativo == "Superior o universitaria" ~ "Superior o universitaria",
+      TRUE ~ NA_character_
+    ),
+    Nivel_educativo = factor(
+      Nivel_educativo,
+      levels = c("Ninguno", "Máximo bachiller", "Superior o universitaria"),
+      ordered = TRUE
+    )
+  )
+
 # Revisar resultado
 glimpse(train_hogares_final)
 
 ```
-revision de datos faltantes;
+Revision de datos faltantes:
 ```{r}
+# Calcular número y porcentaje de faltantes
 faltantes_train_final <- train_hogares_final %>%
   summarise(across(everything(), ~sum(is.na(.)))) %>%
-  pivot_longer(cols = everything(), 
-               names_to = "Variable", 
-               values_to = "N_faltantes") %>%
-  mutate(Pct_faltantes = round((N_faltantes / nrow(train_hogares_final)) * 100, 2))
+  pivot_longer(
+    cols = everything(),
+    names_to = "Variable",
+    values_to = "N_faltantes"
+  ) %>%
+  mutate(
+    Pct_faltantes = round((N_faltantes / nrow(train_hogares_final)) * 100, 2)
+  )
 
-# Mostrar en tabla bonita
-faltantes_train_final %>%
+# Crear tabla con gt
+tabla_faltantes_final <- faltantes_train_final %>%
   gt() %>%
   tab_header(title = "Valores faltantes en train_hogares_final") %>%
   cols_label(
     Variable = "Variable",
     N_faltantes = "N° Faltantes",
     Pct_faltantes = "% Faltantes"
+  ) %>%
+  fmt_number(
+    columns = Pct_faltantes,
+    decimals = 2
   )
+
+# Mostrar en pantalla
+tabla_faltantes_final
+
+# Exportar tabla en HTML, PDF y PNG
+
+# HTML temporal
+gtsave(tabla_faltantes_final, "Tablas y Graficos/9.Faltantes_train_hogares_final.html")
+
+# PDF
+webshot2::webshot(
+  "Tablas y Graficos/9.Faltantes_train_hogares_final.html",
+  "Tablas y Graficos/9.Faltantes_train_hogares_final.pdf"
+)
+
+# PNG
+gtsave(tabla_faltantes_final, "Tablas y Graficos/9.Faltantes_train_hogares_final.png")
 ```
-
-
 ### - Base de Prueba Final
 
-La base de datos de prueba definitiva para las predicciones de pobreza a nivel de gares es:
+La base de datos de prueba definitiva para las predicciones de pobreza a nivel de Hogares es:
 test_hogares_final
 
 ```{r}
-
 # Seleccionar variables de hogares
 test_hogares_sel <- test_hogares2 %>%
   select(id, Clase, Dominio, Tipo_vivienda, Nper, Depto)
@@ -811,6 +850,25 @@ jefes_hogar1 <- test_personas2 %>%
 test_hogares_final <- test_hogares_sel %>%
   left_join(jefes_hogar1, by = "id")
 
+
+# Filtrar niveles
+test_hogares_final<- test_hogares_final%>%
+  filter(!(Nivel_educativo %in% c("No sabe, no informa"))) %>%
+  mutate(
+    Nivel_educativo = case_when(
+      Nivel_educativo == "Ninguno" ~ "Ninguno",
+      Nivel_educativo %in% c("Preescolar", "Básica primaria", "Básica secundaria", "Media") ~ "Máximo bachiller",
+      Nivel_educativo == "Superior o universitaria" ~ "Superior o universitaria",
+      TRUE ~ NA_character_
+    ),
+    Nivel_educativo = factor(
+      Nivel_educativo,
+      levels = c("Ninguno", "Máximo bachiller", "Superior o universitaria"),
+      ordered = TRUE
+    )
+  )
+
+
 # Revisar resultado
 glimpse(test_hogares_final)
 
@@ -819,23 +877,48 @@ glimpse(test_hogares_final)
 Revision de datos faltantes:
 
 ```{r}
+# Calcular número y porcentaje de faltantes
 faltantes_test_final <- test_hogares_final %>%
   summarise(across(everything(), ~sum(is.na(.)))) %>%
-  pivot_longer(cols = everything(), 
-               names_to = "Variable", 
-               values_to = "N_faltantes") %>%
-  mutate(Pct_faltantes = round((N_faltantes / nrow(test_hogares_final)) * 100, 2))
+  pivot_longer(
+    cols = everything(),
+    names_to = "Variable",
+    values_to = "N_faltantes"
+  ) %>%
+  mutate(
+    Pct_faltantes = round((N_faltantes / nrow(test_hogares_final)) * 100, 2)
+  )
 
-# Mostrar en tabla bonita
-faltantes_test_final %>%
+# Crear tabla con gt
+tabla_faltantes_test_final <- faltantes_test_final %>%
   gt() %>%
   tab_header(title = "Valores faltantes en test_hogares_final") %>%
   cols_label(
     Variable = "Variable",
     N_faltantes = "N° Faltantes",
     Pct_faltantes = "% Faltantes"
+  ) %>%
+  fmt_number(
+    columns = Pct_faltantes,
+    decimals = 2
   )
 
+# Mostrar en pantalla
+tabla_faltantes_test_final
+
+# Exportar tabla en HTML, PDF y PNG
+
+# HTML temporal (necesario para generar PDF)
+gtsave(tabla_faltantes_test_final, "Tablas y Graficos/10.Faltantes_test_hogares_final.html")
+
+# PDF
+webshot2::webshot(
+  "Tablas y Graficos/10.Faltantes_test_hogares_final.html",
+  "Tablas y Graficos/10.Faltantes_test_hogares_final.pdf"
+)
+
+# PNG
+gtsave(tabla_faltantes_test_final, "Tablas y Graficos/10.Faltantes_test_hogares_final.png")
 ```
 
 Se evidencia un valor faltante en la variable Actividad_Ocup para cada base final, por lo que se procede a imputar con la moda:
