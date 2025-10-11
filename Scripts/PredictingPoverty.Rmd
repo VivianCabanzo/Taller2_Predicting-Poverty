@@ -786,8 +786,8 @@ train_hogares_final <- train_hogares_final %>%
 
 # Convertir a factor (clasificación)
 train_hogares_final$Pobre <- factor(train_hogares_final$Pobre,
-                                    levels = c(0, 1))
-                                    
+                                    levels = c(0, 1),
+                                    labels = c("No Pobre", "Pobre"))                                    
 # Asegurar formato de variables categóricas
 train_hogares_final <- train_hogares_final %>%
   mutate(
@@ -881,6 +881,7 @@ test_hogares_final <- test_hogares_final %>%
       ordered = TRUE
     )
   )
+
 
 # Asegurar formato de variables categóricas
 test_hogares_final <- test_hogares_final %>%
