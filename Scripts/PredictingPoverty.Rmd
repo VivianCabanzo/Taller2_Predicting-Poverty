@@ -684,6 +684,7 @@ faltantes_test_final <- test_hogares_final %>%
                values_to = "N_faltantes") %>%
   mutate(Pct_faltantes = round((N_faltantes / nrow(test_hogares_final)) * 100, 2))
 
+
 # Mostrar en tabla bonita
 faltantes_test_final %>%
   gt() %>%
@@ -853,7 +854,8 @@ modelo_cv <- train(
   method = "rpart",
   trControl = ctrl,
   tuneLength = 10
-)
+) 
+
 
 # Mostrar resultados de validación cruzada
 print(modelo_cv)
