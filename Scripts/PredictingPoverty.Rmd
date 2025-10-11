@@ -56,9 +56,9 @@ pacman::p_load(
   glmnet,        # Implementación eficiente de modelos de regresión regularizados (EN, Lasso y Ridge)
   MLeval,        # Funciones para evaluar modelos de clasificación y regresión con métricas y gráficos
   MLmetrics,     # Colección de métricas de evaluación para modelos de machine learning
-  rpart,         # Implementar arboles de decision.
-  rpart.plot,    # Graficos de arboles.
-  Metrics        # Evaluar modelos predictivos.
+  rpart,         # Implementar arboles de decision
+  rpart.plot,    # Graficos de arboles
+  Metrics        # Evaluar modelos predictivos
 )
 
 # Verificar paquetes cargados
