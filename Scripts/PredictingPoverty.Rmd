@@ -784,6 +784,17 @@ train_hogares_final <- train_hogares_final %>%
     )
   )
 
+# Convertir a factor (clasificación)
+train_hogares_final$Pobre <- factor(train_hogares_final$Pobre,
+                                    levels = c(0, 1))
+                                    
+# Asegurar formato de variables categóricas
+train_hogares_final <- train_hogares_final %>%
+  mutate(
+    across(c(Clase, Dominio, Tipo_vivienda, Parentesco_jefe, Sexo,
+             Nivel_educativo, Actividad_Ocup), as.factor)
+  )
+
 # Revisar resultado
 glimpse(train_hogares_final)
 
@@ -871,7 +882,12 @@ test_hogares_final <- test_hogares_final %>%
     )
   )
 
-
+# Asegurar formato de variables categóricas
+test_hogares_final <- test_hogares_final %>%
+  mutate(
+    across(c(Clase, Dominio, Tipo_vivienda, Parentesco_jefe, Sexo,
+             Nivel_educativo, Actividad_Ocup), as.factor)
+  )
 
 # Revisar resultado
 glimpse(test_hogares_final)
