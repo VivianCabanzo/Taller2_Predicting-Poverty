@@ -765,14 +765,16 @@ jefes_hogar <- train_personas2 %>%
 train_hogares_final <- train_hogares_sel %>%
   left_join(jefes_hogar, by = "id")
 
-# Filtrar niveles 
-train_hogares_final<- train_hogares_final%>%
-  filter(!(Nivel_educativo %in% c("No sabe, no informa"))) %>%
+# Reescalar variable Nivel_educativo en test_hogares_final
+train_hogares_final <- train_hogares_final %>%
+  # Excluir el código 9 ("No sabe / no informa")
+  filter(!(Nivel_educativo %in% c(9))) %>%
   mutate(
     Nivel_educativo = case_when(
-      Nivel_educativo == "Ninguno" ~ "Ninguno",
-      Nivel_educativo %in% c("Preescolar", "Básica primaria", "Básica secundaria", "Media") ~ "Máximo bachiller",
-      Nivel_educativo == "Superior o universitaria" ~ "Superior o universitaria",
+      Nivel_educativo == 1 ~ "Ninguno",
+      Nivel_educativo == 2 ~ "Preescolar",
+      Nivel_educativo %in% c(3, 4, 5) ~ "Máximo bachiller",  # Básica primaria/secundaria/media
+      Nivel_educativo == 6 ~ "Superior o universitaria",
       TRUE ~ NA_character_
     ),
     Nivel_educativo = factor(
@@ -850,15 +852,16 @@ jefes_hogar1 <- test_personas2 %>%
 test_hogares_final <- test_hogares_sel %>%
   left_join(jefes_hogar1, by = "id")
 
-
-# Filtrar niveles
-test_hogares_final<- test_hogares_final%>%
-  filter(!(Nivel_educativo %in% c("No sabe, no informa"))) %>%
+# Reescalar variable Nivel_educativo en test_hogares_final
+test_hogares_final <- test_hogares_final %>%
+  # Excluir el código 9 ("No sabe / no informa")
+  filter(!(Nivel_educativo %in% c(9))) %>%
   mutate(
     Nivel_educativo = case_when(
-      Nivel_educativo == "Ninguno" ~ "Ninguno",
-      Nivel_educativo %in% c("Preescolar", "Básica primaria", "Básica secundaria", "Media") ~ "Máximo bachiller",
-      Nivel_educativo == "Superior o universitaria" ~ "Superior o universitaria",
+      Nivel_educativo == 1 ~ "Ninguno",
+      Nivel_educativo == 2 ~ "Preescolar",
+      Nivel_educativo %in% c(3, 4, 5) ~ "Máximo bachiller",  # Básica primaria/secundaria/media
+      Nivel_educativo == 6 ~ "Superior o universitaria",
       TRUE ~ NA_character_
     ),
     Nivel_educativo = factor(
@@ -867,6 +870,7 @@ test_hogares_final<- test_hogares_final%>%
       ordered = TRUE
     )
   )
+
 
 
 # Revisar resultado
@@ -953,7 +957,7 @@ cat("Faltantes en test_hogares_final:", sum(is.na(test_hogares_final$Actividad_O
 Tabla de estadisticas descriptivas de las bases de datos a nivel de hogares.
 
 ```{r}
-# Crear la tabla gt
+# Crear la tabla del diccionario de variables
 tabla_vars_final <- tibble::tibble(
   Variable = c(
     "id", "Clase", "Dominio", "Tipo_vivienda", 
@@ -977,6 +981,7 @@ tabla_vars_final <- tibble::tibble(
   )
 )
 
+# Crear tabla GT con formato
 tabla_gt <- tabla_vars_final %>%
   gt() %>%
   tab_header(
@@ -987,11 +992,21 @@ tabla_gt <- tabla_vars_final %>%
     Descripcion = "Descripción"
   )
 
-# Guardar tabla HTML y PDF
-gtsave(tabla_gt, "diccionario_variables.html")
-webshot("diccionario_variables.html", "diccionario_variables.pdf")
+# Exportar tabla a HTML, PDF y PNG dentro de la carpeta
 
-# Imprimir
+# HTML temporal (base para PDF/PNG)
+gtsave(tabla_gt, "Tablas y Graficos/11.Diccionario_Variables_Hogares.html")
+
+# PDF
+webshot2::webshot(
+  "Tablas y Graficos/11.Diccionario_Variables_Hogares.html",
+  "Tablas y Graficos/11.Diccionario_Variables_Hogares.pdf"
+)
+
+# PNG
+gtsave(tabla_gt, "Tablas y Graficos/11.Diccionario_Variables_Hogares.png")
+
+# Mostrar tabla en pantalla
 tabla_gt
 
 ```
@@ -1060,9 +1075,11 @@ tabla_estadisticas <- resumen %>%
 tabla_estadisticas
 
 # Exportar a PDF
-gtsave(tabla_estadisticas, "estadisticas_descriptivas.html")
-webshot2::webshot("estadisticas_descriptivas.html", "estadisticas_descriptivas.pdf")
+gtsave(tabla_estadisticas, "Tablas y Graficos/12.Estadisticas_Descriptivas.html")
+webshot2::webshot("Tablas y Graficos/12.Estadisticas_Descriptivas.html", "Tablas y Graficos/12.Estadisticas_Descriptivas.pdf")
 
+# PNG
+gtsave(tabla_estadisticas, "Tablas y Graficos/12.Estadisticas_Descriptivas.png")
 
 ```
 
