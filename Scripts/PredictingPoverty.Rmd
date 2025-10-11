@@ -55,8 +55,10 @@ pacman::p_load(
   rpart,         # Arboles de decisión
   rpart.plot,    # Gráfico de arboles
   caret,         # Estimación de modelos predictivos
-  Metrics       # Evaluación de modelos predictivos
+  Metrics,       # Evaluación de modelos predictivos
+  rpart
 )
+
 
 # Verificar paquetes cargados
 pacman::p_loaded()
@@ -783,16 +785,43 @@ Cada división se elige para maximizar la pureza de las clases (pobres o no pobr
 
 
 ```{r}
-#  Entrenar el modelo CART
+
+# Verificar variable dependiente
+table(train_hogares_final$Pobre)
+
+# Convertir a factor (clasificación)
+train_hogares_final$Pobre <- factor(train_hogares_final$Pobre,
+                                    levels = c(0, 1),
+                                    labels = c("No Pobre", "Pobre"))
+
+# Asegurar formato de variables categóricas
+train_hogares_final <- train_hogares_final %>%
+  mutate(
+    across(c(Clase, Dominio, Tipo_vivienda, Parentesco_jefe, Sexo,
+             Nivel_educativo, Actividad_Ocup), as.factor)
+  )
+
+# Entrenar con control ajustado
 modelo_cart <- rpart(
   Pobre ~ Clase + Dominio + Tipo_vivienda + Nper + Depto + 
     Parentesco_jefe + Sexo + Edad + Nivel_educativo + Actividad_Ocup,
   data = train_hogares_final,
-  method = "class",               
-  cp = 0  
+  method = "class"
 )
 
-prp(modelo_cart)
+prp(modelo_cart, 
+    under = TRUE, 
+    branch.lty = 2, 
+    yesno = 1, 
+    faclen = 0, 
+    varlen = 15,
+    box.palette = "-RdYlGn")
+```
+```{r}
+pobre        <- ifelse(train_hogares_final$Pobre=="Yes",1,0) 
+pred_prob    <- predict(modelo_cart, newdata = test_hogares_final, type = "prob") 
+aucval_pobre <- Metrics::auc(actual = pobre,predicted = pred_prob[,2]) #calcular el AUC
+aucval_pobre 
 ```
 
 
