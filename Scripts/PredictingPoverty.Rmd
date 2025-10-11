@@ -55,8 +55,10 @@ pacman::p_load(
   caret,         # Herramientas preprocesamiento, selección de modelos y evaluación de algoritmos de ML
   glmnet,        # Implementación eficiente de modelos de regresión regularizados (EN, Lasso y Ridge)
   MLeval,        # Funciones para evaluar modelos de clasificación y regresión con métricas y gráficos
-  MLmetrics      # Colección de métricas de evaluación para modelos de machine learning
+  MLmetrics,      # Colección de métricas de evaluación para modelos de machine learning
+  r
 )
+
 
 # Verificar paquetes cargados
 pacman::p_loaded()
@@ -1094,6 +1096,54 @@ test_hogares_final
 
 
 ### 3.1. Seleccion de modelos y entrenamiento
+
+### 3.1. Seleccion de modelos y entrenamiento
+
+En esta sección se realizará la evaluación de los modelos de predicción.
+
+####  Modelo Carts
+
+El modelo CART utiliza un árbol de decisión binario para predecir la condición de pobreza de los hogares.
+Divide los datos en grupos cada vez más homogéneos según variables como tipo de vivienda, nivel educativo, número de personas y ocupación del jefe del hogar.
+
+Cada división se elige para maximizar la pureza de las clases (pobres o no pobres) y el árbol se poda para evitar sobreajuste.
+
+```{r}
+
+# 1️⃣ Verifica los valores de Pobre
+table(train_hogares_final$Pobre, useNA = "ifany")
+
+# 2️⃣ Asegura que Pobre sea numérica (0 y 1)
+train_hogares_final$Pobre <- as.numeric(as.character(train_hogares_final$Pobre))
+
+# 3️⃣ Convierte variables categóricas en ambos datasets
+train_hogares_final <- train_hogares_final %>%
+  mutate(across(c(Clase, Dominio, Tipo_vivienda, Parentesco_jefe,
+                  Sexo, Nivel_educativo, Actividad_Ocup), as.factor))
+
+test_hogares_final <- test_hogares_final %>%
+  mutate(across(c(Clase, Dominio, Tipo_vivienda, Parentesco_jefe,
+                  Sexo, Nivel_educativo, Actividad_Ocup), as.factor))
+
+# 4️⃣ Entrena el modelo CART
+modelo_cart <- rpart(
+  Pobre ~ Clase + Dominio + Tipo_vivienda + Nper + Depto + 
+    Parentesco_jefe + Sexo + Edad + Nivel_educativo + Actividad_Ocup,
+  data = train_hogares_final,
+  method = "class"
+)
+
+# 5️⃣ Predicciones de probabilidad sobre el conjunto de test
+pred_prob <- predict(modelo_cart, newdata = test_hogares_final, type = "prob")
+
+# 6️⃣ Agrega las probabilidades de pobreza al conjunto de test
+test_hogares_final$Prob_Pobre <- pred_prob[, 2]
+
+# 7️⃣ Visualiza las primeras filas con la probabilidad
+head(test_hogares_final[, c("Prob_Pobre")])
+
+```
+
 
 ### 3.2. Hiperparametros
 
