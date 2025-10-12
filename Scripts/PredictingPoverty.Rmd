@@ -56,7 +56,9 @@ pacman::p_load(
   glmnet,        # Implementación eficiente de modelos de regresión regularizados (EN, Lasso y Ridge)
   MLeval,        # Funciones para evaluar modelos de clasificación y regresión con métricas y gráficos
   MLmetrics,      # Colección de métricas de evaluación para modelos de machine learning
-  r
+  rpart,         # Arboles de decisión
+  rpart.plot,     # Gráficar arboles
+  Metrics        # evaluar modelos predictivos
 )
 
 
@@ -1110,25 +1112,37 @@ Cada división se elige para maximizar la pureza de las clases (pobres o no pobr
 
 ```{r}
 
+train_hogares_final$Clase <- factor(trimws(train_hogares_final$Clase))
+test_hogares_final$Clase  <- factor(trimws(test_hogares_final$Clase))
+
+train_hogares_final <- train_hogares_final %>%
+  drop_na(Pobre, Clase, Dominio, Tipo_vivienda, Nper, Depto,
+           Sexo, Edad, Nivel_educativo, Actividad_Ocup)
+set.seed(123)
+
 # 1️⃣ Verifica los valores de Pobre
 table(train_hogares_final$Pobre, useNA = "ifany")
 
 # 2️⃣ Asegura que Pobre sea numérica (0 y 1)
-train_hogares_final$Pobre <- as.numeric(as.character(train_hogares_final$Pobre))
+train_hogares_final$Pobre <- factor(
+  train_hogares_final$Pobre,
+  levels = c(0, 1),
+  labels = c("NoPobre", "Pobre")
+)
 
 # 3️⃣ Convierte variables categóricas en ambos datasets
 train_hogares_final <- train_hogares_final %>%
-  mutate(across(c(Clase, Dominio, Tipo_vivienda, Parentesco_jefe,
-                  Sexo, Nivel_educativo, Actividad_Ocup), as.factor))
+  mutate(across(c(Clase, Dominio, Tipo_vivienda, 
+                  Sexo, Nivel_educativo, Actividad_Ocup, Depto), as.factor))
 
 test_hogares_final <- test_hogares_final %>%
   mutate(across(c(Clase, Dominio, Tipo_vivienda, Parentesco_jefe,
-                  Sexo, Nivel_educativo, Actividad_Ocup), as.factor))
+                  Sexo, Nivel_educativo, Actividad_Ocup, Depto), as.factor))
 
 # 4️⃣ Entrena el modelo CART
 modelo_cart <- rpart(
   Pobre ~ Clase + Dominio + Tipo_vivienda + Nper + Depto + 
-    Parentesco_jefe + Sexo + Edad + Nivel_educativo + Actividad_Ocup,
+    Sexo + Edad + Nivel_educativo + Actividad_Ocup,
   data = train_hogares_final,
   method = "class"
 )
@@ -1143,6 +1157,97 @@ test_hogares_final$Prob_Pobre <- pred_prob[, 2]
 head(test_hogares_final[, c("Prob_Pobre")])
 
 ```
+
+```{r}
+fiveStats <- function(...) {
+  c(
+    twoClassSummary(...),
+    defaultSummary(...)
+  )
+}
+
+ctrl <- trainControl(
+  method = "cv",
+  number = 5,
+  summaryFunction = fiveStats,
+  classProbs = TRUE,
+  verboseIter = TRUE,
+  savePredictions = "final"
+)
+
+# --- Entrenamiento del modelo CART ---
+set.seed(123)
+modelo_cart_cv <- train(
+  Pobre ~ Clase + Dominio + Tipo_vivienda + Nper + Depto +
+    Sexo + Edad + Nivel_educativo + Actividad_Ocup,
+  data = train_hogares_final,
+  method = "rpart",
+  trControl = ctrl,
+  tuneGrid = expand.grid(cp = seq(0.001, 0.02, 0.001)),
+  metric = "ROC",
+  control = rpart.control(maxdepth = 6, minsplit = 20)
+)
+
+
+```
+
+
+
+```{r}
+modelo_cart_cv$finalModel$cptable
+```
+
+
+```{r}
+cp_optimo <- modelo_cart_cv$bestTune$cp
+arbol_podado <- prune(modelo_cart_cv$finalModel, cp = cp_optimo)
+
+prp(arbol_podado, under = TRUE, branch.lty = 2,
+    yesno = 1, faclen = 0, varlen = 15,
+    box.palette = "-RdYlGn", main = "Árbol CART Podado")
+```
+
+```{r}
+# --- Predicciones de probabilidad ---
+pred_prob <- predict(arbol_podado, newdata = test_hogares_final, type = "prob")
+test_hogares_final$Prob_Pobre <- pred_prob[, 2]
+
+# --- Predicciones de clase ---
+predictSample <- test_hogares_final |>
+  mutate(Pobre = predict(arbol_podado, newdata = test_hogares_final, type = "class")) |>
+  select(id, Pobre)
+
+# --- Convertir a 0/1 ---
+predictSample <- predictSample |>
+  mutate(pobre = ifelse(Pobre == "Pobre", 1, 0)) |>
+  select(id, pobre)
+
+head(predictSample)
+```
+
+
+```{r}
+
+```
+
+```{r}
+# Crear el string con el valor óptimo de cp
+cp_str <- gsub("\\.", "_", as.character(round(modelo_cart_cv$bestTune$cp, 4)))
+
+# Nombre del archivo
+name <- paste0("CART_cp_", cp_str, ".csv")
+
+# Ruta de la carpeta de salida (una carpeta antes del script)
+output_path <- file.path("..", "Predicciones", name)
+
+# Guardar el archivo en esa carpeta
+write.csv(predictSample, output_path, row.names = FALSE)
+
+# Confirmar
+cat("✅ Archivo guardado en:", normalizePath(output_path), "\n")
+```
+
+
 
 
 ### 3.2. Hiperparametros
