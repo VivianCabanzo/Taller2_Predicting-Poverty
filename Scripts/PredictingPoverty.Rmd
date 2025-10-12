@@ -1115,9 +1115,13 @@ Cada división se elige para maximizar la pureza de las clases (pobres o no pobr
 train_hogares_final$Clase <- factor(trimws(train_hogares_final$Clase))
 test_hogares_final$Clase  <- factor(trimws(test_hogares_final$Clase))
 
-train_hogares_final <- train_hogares_final %>%
-  drop_na(Pobre, Clase, Dominio, Tipo_vivienda, Nper, Depto,
-           Sexo, Edad, Nivel_educativo, Actividad_Ocup)
+mode_value <- names(sort(table(test_hogares_final$Nivel_educativo), decreasing = TRUE))[1]
+test_hogares_final$Nivel_educativo[is.na(test_hogares_final$Nivel_educativo)] <- mode_value
+
+mode_value <- names(sort(table(test_hogares_final$Nivel_educativo), decreasing = TRUE))[1]
+test_hogares_final$Nivel_educativo[is.na(test_hogares_final$Nivel_educativo)] <- mode_value
+
+
 set.seed(123)
 
 # 1️⃣ Verifica los valores de Pobre
@@ -1185,7 +1189,8 @@ modelo_cart_cv <- train(
   trControl = ctrl,
   preProcess = c("center", "scale"), # opcional, pero útil
   tuneGrid = expand.grid(cp = seq(0.001, 0.02, 0.001)),
-  metric = "ROC"
+  metric = "ROC",
+  na.action = na.omit
 )
 
 
@@ -1209,21 +1214,35 @@ prp(arbol_podado, under = TRUE, branch.lty = 2,
 ```
 
 ```{r}
-# --- Predicciones de probabilidad ---
-pred_prob <- predict(arbol_podado, newdata = test_hogares_final, type = "prob")
-test_hogares_final$Prob_Pobre <- pred_prob[, 2]
+# Filas completas para predictores
+predictor_vars <- c("Clase","Dominio","Tipo_vivienda","Nper","Depto",
+                    "Sexo","Edad","Nivel_educativo","Actividad_Ocup")
+complete_cases <- complete.cases(test_hogares_final[, predictor_vars])
 
-# --- Predicciones de clase ---
-predictSample <- test_hogares_final |>
-  mutate(Pobre = predict(arbol_podado, newdata = test_hogares_final, type = "class")) |>
-  select(id, Pobre)
+# Inicializar columnas
+test_hogares_final$Prob_Pobre <- NA
+test_hogares_final$pobre <- NA
 
-# --- Convertir a 0/1 ---
-predictSample <- predictSample |>
-  mutate(pobre = ifelse(Pobre == "Pobre", 1, 0)) |>
-  select(id, pobre)
+# Predicción de probabilidad solo en filas completas
+test_hogares_final$Prob_Pobre[complete_cases] <- predict(
+  modelo_cart_cv,
+  newdata = test_hogares_final[complete_cases, ],
+  type = "prob"
+)[, "Pobre"]   # <- este "Pobre" ahora es la clase positiva
+
+# Convertir a 0/1 usando 0.5 como umbral
+test_hogares_final$pobre[complete_cases] <- ifelse(
+  test_hogares_final$Prob_Pobre[complete_cases] >= 0.5, 1, 0
+)
+
+# Seleccionar columnas finales
+predictSample <- test_hogares_final |> select(id, pobre)
 
 head(predictSample)
+
+
+
+
 ```
 
 
@@ -1242,6 +1261,9 @@ write.csv(predictSample, output_path, row.names = FALSE)
 
 # Confirmar
 cat("✅ Archivo guardado en:", normalizePath(output_path), "\n")
+```
+```{r}
+sum(is.na(predictSample))
 ```
 
 
