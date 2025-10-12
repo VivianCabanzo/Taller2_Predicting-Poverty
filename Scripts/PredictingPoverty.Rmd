@@ -1178,15 +1178,16 @@ ctrl <- trainControl(
 # --- Entrenamiento del modelo CART ---
 set.seed(123)
 modelo_cart_cv <- train(
-  Pobre ~ Clase + Dominio + Tipo_vivienda + Nper + Depto +
+  Pobre ~ Clase + Dominio + Tipo_vivienda + Nper + Depto + 
     Sexo + Edad + Nivel_educativo + Actividad_Ocup,
   data = train_hogares_final,
   method = "rpart",
   trControl = ctrl,
+  preProcess = c("center", "scale"), # opcional, pero útil
   tuneGrid = expand.grid(cp = seq(0.001, 0.02, 0.001)),
-  metric = "ROC",
-  control = rpart.control(maxdepth = 6, minsplit = 20)
+  metric = "ROC"
 )
+
 
 
 ```
@@ -1225,10 +1226,6 @@ predictSample <- predictSample |>
 head(predictSample)
 ```
 
-
-```{r}
-
-```
 
 ```{r}
 # Crear el string con el valor óptimo de cp
