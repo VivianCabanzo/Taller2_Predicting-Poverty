@@ -770,25 +770,138 @@ jefes_hogar <- train_personas2 %>%
 train_hogares_final <- train_hogares_sel %>%
   left_join(jefes_hogar, by = "id")
 
-# Reescalar variable Nivel_educativo en train_hogares_final
+# Reescalar variable Clase en train_hogares_final
+train_hogares_final <- train_hogares_final %>%
+  mutate(
+    Clase = as.numeric(as.character(Clase)),  # asegurar tipo numérico
+    Clase = case_when(
+      Clase %in% c(1, 2) ~ Clase,
+      TRUE ~ NA_real_
+    ),
+    Clase = factor(
+      Clase,
+      levels = c(1, 2),
+      labels = c(
+        "Cabecera",
+        "Resto (centros poblados y rural dispersa)"
+      )
+    )
+  )
+
+# Reescalar variable Nivel_educativo
 train_hogares_final <- train_hogares_final %>%
   mutate(
     Nivel_educativo = case_when(
-      Nivel_educativo == 9 ~ NA_character_,  # convertir "No sabe / no informa" en NA
-      Nivel_educativo == 1 ~ "Ninguno",
-      Nivel_educativo == 2 ~ "Preescolar",
-      Nivel_educativo %in% c(3, 4, 5) ~ "Máximo bachiller",  # Básica primaria/secundaria/media
-      Nivel_educativo == 6 ~ "Superior o universitaria",
-      TRUE ~ NA_character_
+      Nivel_educativo == 9 ~ NA_real_,
+      Nivel_educativo == 1 ~ 1,
+      Nivel_educativo == 2 ~ 2,
+      Nivel_educativo %in% c(3, 4, 5) ~ 3,
+      Nivel_educativo == 6 ~ 4,
+      TRUE ~ NA_real_
     ),
     Nivel_educativo = factor(
       Nivel_educativo,
-      levels = c("Ninguno", "Preescolar", "Máximo bachiller", "Superior o universitaria"),
+      levels = c(1, 2, 3, 4),
+      labels = c(
+        "Ninguno",
+        "Preescolar",
+        "Máximo bachiller",
+        "Superior o universitaria"
+      ),
       ordered = TRUE
     )
   )
 
-# Convertir a factor (clasificación)
+# Reescalar Parentesco_jefe
+train_hogares_final <- train_hogares_final %>%
+  mutate(
+    Parentesco_jefe = case_when(
+      Parentesco_jefe == 1 ~ 1,      # jefe
+      TRUE ~ 2                       # todos los demás
+    ),
+    Parentesco_jefe = factor(
+      Parentesco_jefe,
+      levels = c(1, 2),
+      labels = c("Jefe", "No jefe")
+    )
+  )
+
+# Reescalar variable Sexo
+train_hogares_final <- train_hogares_final %>%
+  mutate(
+    Sexo = case_when(
+      Sexo %in% c(1, 2) ~ Sexo,   # valores válidos
+      TRUE ~ NA_real_             # cualquier otro código → NA
+    ),
+    Sexo = factor(
+      Sexo,
+      levels = c(1, 2),
+      labels = c("Hombre", "Mujer")
+    )
+  )
+
+
+# Reescalar Actividad_ocup
+train_hogares_final <- train_hogares_final %>%
+  mutate(
+    # Asegurar que sea numérica antes de recodificar
+    Actividad_Ocup = as.numeric(as.character(Actividad_Ocup)),
+
+    # Mantener solo valores válidos (1 a 6), los demás -> NA
+    Actividad_Ocup = case_when(
+      Actividad_Ocup %in% 1:6 ~ Actividad_Ocup,
+      TRUE ~ NA_real_
+    ),
+
+    # Convertir a factor con etiquetas descriptivas
+    Actividad_Ocup = factor(
+      Actividad_Ocup,
+      levels = c(1, 2, 3, 4, 5, 6),
+      labels = c(
+        "Trabajando",
+        "Buscando trabajo",
+        "Estudiando",
+        "Oficios del hogar",
+        "Incapacitado permanente",
+        "Otra actividad"
+      ),
+      ordered = FALSE
+    )
+  )
+
+# Reescalar variable Tipo_vivienda en train_hogares_final
+train_hogares_final <- train_hogares_final %>%
+  mutate(
+    Tipo_vivienda = as.numeric(as.character(Tipo_vivienda)),  # asegurar tipo numérico
+    Tipo_vivienda = case_when(
+      Tipo_vivienda %in% 1:6 ~ Tipo_vivienda,  # mantener válidos
+      TRUE ~ NA_real_
+    ),
+    # Re-codificar niveles uniendo las dos categorías de "Propia"
+    Tipo_vivienda = case_when(
+      Tipo_vivienda %in% c(1, 2) ~ 1,  # Propia pagada o pagando
+      Tipo_vivienda == 3 ~ 2,          # Arriendo o subarriendo
+      Tipo_vivienda == 4 ~ 3,          # Usufructo
+      Tipo_vivienda == 5 ~ 4,          # Ocupante sin título
+      Tipo_vivienda == 6 ~ 5,          # Otra
+      TRUE ~ NA_real_
+    ),
+    Tipo_vivienda = factor(
+      Tipo_vivienda,
+      levels = c(1, 2, 3, 4, 5),
+      labels = c(
+        "Propia (pagada o pagando)",
+        "Arriendo o subarriendo",
+        "Usufructo",
+        "Ocupante sin título",
+        "Otra"
+      ),
+      ordered = TRUE
+    )
+  )
+
+
+# Convertir Pobre
 train_hogares_final$Pobre <- factor(train_hogares_final$Pobre,
                                     levels = c(0, 1),
                                     labels = c("NoPobre", "Pobre"))                                    
@@ -800,9 +913,9 @@ train_hogares_final <- train_hogares_final %>%
   )
 
 # Revisar resultado
-glimpse(train_hogares_final)
-
+head(train_hogares_final)
 ```
+
 Revision de datos faltantes en train hogares:
 ```{r}
 # Calcular número y porcentaje de faltantes
@@ -869,24 +982,136 @@ jefes_hogar1 <- test_personas2 %>%
 test_hogares_final <- test_hogares_sel %>%
   left_join(jefes_hogar1, by = "id")
 
-# Reescalar variable Nivel_educativo en test_hogares_final
+
+#Reescalar Clase de centro poblado
+test_hogares_final <- test_hogares_final %>%
+  mutate(
+    Clase = as.numeric(as.character(Clase)),
+    Clase = case_when(
+      Clase %in% c(1, 2) ~ Clase,
+      TRUE ~ NA_real_
+    ),
+    Clase = factor(
+      Clase,
+      levels = c(1, 2),
+      labels = c(
+        "Cabecera",
+        "Resto (centros poblados y rural dispersa)"
+      )
+    )
+  )
+
+
+# Reescalar variable Nivel_educativo
 test_hogares_final <- test_hogares_final %>%
   mutate(
     Nivel_educativo = case_when(
-      Nivel_educativo == 9 ~ NA_character_,  # convertir "No sabe / no informa" en NA
-      Nivel_educativo == 1 ~ "Ninguno",
-      Nivel_educativo == 2 ~ "Preescolar",
-      Nivel_educativo %in% c(3, 4, 5) ~ "Máximo bachiller",  # Básica primaria/secundaria/media
-      Nivel_educativo == 6 ~ "Superior o universitaria",
-      TRUE ~ NA_character_
+      Nivel_educativo == 9 ~ NA_real_,
+      Nivel_educativo == 1 ~ 1,
+      Nivel_educativo == 2 ~ 2,
+      Nivel_educativo %in% c(3, 4, 5) ~ 3,
+      Nivel_educativo == 6 ~ 4,
+      TRUE ~ NA_real_
     ),
     Nivel_educativo = factor(
       Nivel_educativo,
-      levels = c("Ninguno", "Preescolar", "Máximo bachiller", "Superior o universitaria"),
+      levels = c(1, 2, 3, 4),
+      labels = c(
+        "Ninguno",
+        "Preescolar",
+        "Máximo bachiller",
+        "Superior o universitaria"
+      ),
       ordered = TRUE
     )
   )
 
+# Reescalar Parentesco_jefe
+test_hogares_final <- test_hogares_final %>%
+  mutate(
+    Parentesco_jefe = case_when(
+      Parentesco_jefe == 1 ~ 1,      # jefe
+      TRUE ~ 2                       # todos los demás
+    ),
+    Parentesco_jefe = factor(
+      Parentesco_jefe,
+      levels = c(1, 2),
+      labels = c("Jefe", "No jefe")
+    )
+  )
+
+# Reescalar variable Sexo
+test_hogares_final <- test_hogares_final %>%
+  mutate(
+    Sexo = case_when(
+      Sexo %in% c(1, 2) ~ Sexo,   # valores válidos
+      TRUE ~ NA_real_             # cualquier otro código → NA
+    ),
+    Sexo = factor(
+      Sexo,
+      levels = c(1, 2),
+      labels = c("Hombre", "Mujer")
+    )
+  )
+
+#Reescalar Activdad_Ocup
+test_hogares_final <- test_hogares_final %>%
+  mutate(
+    # Asegurar que sea numérica antes de recodificar
+    Actividad_Ocup = as.numeric(as.character(Actividad_Ocup)),
+
+    # Mantener solo valores válidos (1 a 6), los demás -> NA
+    Actividad_Ocup = case_when(
+      Actividad_Ocup %in% 1:6 ~ Actividad_Ocup,
+      TRUE ~ NA_real_
+    ),
+
+    # Convertir a factor con etiquetas descriptivas
+    Actividad_Ocup = factor(
+      Actividad_Ocup,
+      levels = c(1, 2, 3, 4, 5, 6),
+      labels = c(
+        "Trabajando",
+        "Buscando trabajo",
+        "Estudiando",
+        "Oficios del hogar",
+        "Incapacitado permanente",
+        "Otra actividad"
+      ),
+      ordered = FALSE
+    )
+  )
+
+# Reescalar variable Tipo_vivienda en test_hogares_final
+test_hogares_final <- test_hogares_final %>%
+  mutate(
+    Tipo_vivienda = as.numeric(as.character(Tipo_vivienda)),  # asegurar tipo numérico
+    Tipo_vivienda = case_when(
+      Tipo_vivienda %in% 1:6 ~ Tipo_vivienda,  # mantener válidos
+      TRUE ~ NA_real_
+    ),
+    # Re-codificar niveles uniendo las dos categorías de "Propia"
+    Tipo_vivienda = case_when(
+      Tipo_vivienda %in% c(1, 2) ~ 1,  # Propia pagada o pagando
+      Tipo_vivienda == 3 ~ 2,          # Arriendo o subarriendo
+      Tipo_vivienda == 4 ~ 3,          # Usufructo
+      Tipo_vivienda == 5 ~ 4,          # Ocupante sin título
+      Tipo_vivienda == 6 ~ 5,          # Otra
+      TRUE ~ NA_real_
+    ),
+    Tipo_vivienda = factor(
+      Tipo_vivienda,
+      levels = c(1, 2, 3, 4, 5),
+      labels = c(
+        "Propia (pagada o pagando)",
+        "Arriendo o subarriendo",
+        "Usufructo",
+        "Ocupante sin título",
+        "Otra"
+      ),
+      ordered = TRUE
+    )
+  )
 
 # Asegurar formato de variables categóricas
 test_hogares_final <- test_hogares_final %>%
@@ -896,8 +1121,7 @@ test_hogares_final <- test_hogares_final %>%
   )
 
 # Revisar resultado
-glimpse(test_hogares_final)
-
+head(test_hogares_final)
 ```
 
 Revision de datos faltantes test hogares:
@@ -951,61 +1175,72 @@ tabla_faltantes_test_final
 Se evidencia un valor faltante en la variable Actividad_Ocup para cada base final, por lo que se procede a imputar con la moda:
 
 ```{r}
-# Función para imputar NAs con la moda
-imputar_moda <- function(df, variable) {
-  moda <- df %>%
-    filter(!is.na(.data[[variable]])) %>%
-    count(.data[[variable]]) %>%
-    arrange(desc(n)) %>%
-    slice(1) %>%
-    pull(1)
+# -----------------------------------------------------------
+# 🧩 Función robusta: imputar por moda con impresión clara por base
+# -----------------------------------------------------------
+imputar_moda <- function(df, variable, nombre_base = "Desconocida") {
+  var <- df[[variable]]
   
-  df %>%
-    mutate("{variable}" := ifelse(is.na(.data[[variable]]), moda, .data[[variable]]))
+  # Calcular NA antes
+  n_na_antes <- sum(is.na(var))
+  
+  # Calcular la moda (valor más frecuente, excluyendo NA)
+  moda <- names(sort(table(var), decreasing = TRUE))[1]
+  
+  cat("Base:", nombre_base, "\n")
+  cat("Variable:", variable, "\n")
+  cat(" - NAs antes de imputar:", n_na_antes, "\n")
+  cat(" - Moda usada:", moda, "\n")
+  
+  # Copiar el data frame (para seguridad)
+  df2 <- df
+  
+  # Imputar manteniendo la clase
+  if (is.factor(var)) {
+    niveles <- levels(var)
+    ordenado <- is.ordered(var)
+    
+    var_char <- as.character(var)
+    var_char[is.na(var_char)] <- moda
+    
+    df2[[variable]] <- factor(var_char, levels = niveles, ordered = ordenado)
+  } else {
+    var_temp <- var
+    var_temp[is.na(var_temp)] <- moda
+    df2[[variable]] <- var_temp
+  }
+  
+  # Calcular NA después
+  n_na_despues <- sum(is.na(df2[[variable]]))
+  
+  cat(" - NAs después de imputar:", n_na_despues, "\n")
+  cat("------------------------------------------------------------\n\n")
+  
+  return(df2)
 }
 
-# Verificar faltantes antes de imputar
-cat("ANTES DE IMPUTAR:\n")
-cat("Train - Actividad_Ocup:", sum(is.na(train_hogares_final$Actividad_Ocup)), "\n")
-cat("Train - Nivel_educativo:", sum(is.na(train_hogares_final$Nivel_educativo)), "\n")
-cat("Test  - Actividad_Ocup:", sum(is.na(test_hogares_final$Actividad_Ocup)), "\n")
-cat("Test  - Nivel_educativo:", sum(is.na(test_hogares_final$Nivel_educativo)), "\n\n")
+# -----------------------------------------------------------
+# 🧠 Aplicar imputación a TRAIN y TEST con identificación clara
+# -----------------------------------------------------------
 
-# Imputar por moda en ambas variables y bases
 train_hogares_final <- train_hogares_final %>%
-  imputar_moda("Actividad_Ocup") %>%
-  imputar_moda("Nivel_educativo")
+  imputar_moda("Actividad_Ocup", nombre_base = "TRAIN Hogares Final") %>%
+  imputar_moda("Nivel_educativo", nombre_base = "TRAIN Hogares Final")
 
 test_hogares_final <- test_hogares_final %>%
-  imputar_moda("Actividad_Ocup") %>%
-  imputar_moda("Nivel_educativo")
+  imputar_moda("Actividad_Ocup", nombre_base = "TEST Hogares Final") %>%
+  imputar_moda("Nivel_educativo", nombre_base = "TEST Hogares Final")
 
-# Convertir ambas variables a factores
-train_hogares_final <- train_hogares_final %>%
-  mutate(
-    Actividad_Ocup = as.factor(Actividad_Ocup),
-    Nivel_educativo = as.factor(Nivel_educativo)
-  )
-
-test_hogares_final <- test_hogares_final %>%
-  mutate(
-    Actividad_Ocup = as.factor(Actividad_Ocup),
-    Nivel_educativo = as.factor(Nivel_educativo)
-  )
-
-# Verificar resultados después de imputar
-cat("DESPUÉS DE IMPUTAR:\n")
-cat("Train - Actividad_Ocup:", sum(is.na(train_hogares_final$Actividad_Ocup)), "\n")
-cat("Train - Nivel_educativo:", sum(is.na(train_hogares_final$Nivel_educativo)), "\n")
-cat("Test  - Actividad_Ocup:", sum(is.na(test_hogares_final$Actividad_Ocup)), "\n")
-cat("Test  - Nivel_educativo:", sum(is.na(test_hogares_final$Nivel_educativo)), "\n")
+# -----------------------------------------------------------
+# ✅ Resumen final
+# -----------------------------------------------------------
+cat("\n✅ RESUMEN FINAL DE NAs:\n")
+cat("TRAIN - Actividad_Ocup:", sum(is.na(train_hogares_final$Actividad_Ocup)), "\n")
+cat("TRAIN - Nivel_educativo:", sum(is.na(train_hogares_final$Nivel_educativo)), "\n")
+cat("TEST  - Actividad_Ocup:", sum(is.na(test_hogares_final$Actividad_Ocup)), "\n")
+cat("TEST  - Nivel_educativo:", sum(is.na(test_hogares_final$Nivel_educativo)), "\n")
 
 ```
-
-
-### 2.2. Estadísticas descriptivas
-Tabla de estadisticas descriptivas de las bases de datos a nivel de hogares.
-
 ```{r}
 # Crear diccionario automático desde el dataset
 dicc_final <- tibble(
@@ -1017,10 +1252,10 @@ dicc_final <- tibble(
       Variable == "id" ~ "Llave única del hogar",
       Variable == "Clase" ~ "Clase de centro poblado: 1. Cabecera; 2. Resto (centros poblados y rural dispersa)",
       Variable == "Dominio" ~ "Dominio geográfico: áreas metropolitanas, cabeceras y resto",
-      Variable == "Tipo_vivienda" ~ "Tipo de vivienda: a. Propia pagada, b. Propia pagando, c. Arriendo/subarriendo, d. Usufructo, e. Ocupante sin título, f. Otra",
+      Variable == "Tipo_vivienda" ~ "Tipo de vivienda: a. Propia (Pagada o Pagando), b. Arriendo/subarriendo, c. Usufructo, d. Ocupante sin título, e. Otra",
       Variable == "Nper" ~ "Número de personas en el hogar",
       Variable == "Depto" ~ "Departamento de residencia",
-      Variable == "Pobre" ~ "1 = Pobre ; 0 = No pobre (solo en entrenamiento)",
+      Variable == "Pobre" ~ "1 = Pobre ; 0 = No pobre (solo en base de entrenamiento)",
       Variable == "Parentesco_jefe" ~ "Parentesco con el jefe de hogar (1 = jefe, otros = distintos roles)",
       Variable == "Sexo" ~ "Sexo del jefe de hogar (1 = Hombre, 2 = Mujer)",
       Variable == "Edad" ~ "Edad del jefe de hogar (en años)",
@@ -1034,7 +1269,7 @@ dicc_final <- tibble(
 dicc_final <- dicc_final %>%
   gt() %>%
   tab_header(
-    title = "Diccionario de Variables: train_hogares_final"
+    title = "Diccionario de Variables en base de entrenamiento y de prueba"
   ) %>%
   cols_label(
     Variable = "Variable",
@@ -1060,77 +1295,128 @@ dicc_final
 
 ```
 
-
+### 2.2. Estadísticas descriptivas
+Tabla de estadisticas descriptivas para las dos bases de hogares:
+   
 ```{r}
-# Filtrar variables (Exclusión de id, Dominio, Depto)
-datos_filtrados <- train_hogares_final %>%
-  select(-id, -Dominio, -Depto)
-
-# Estadísticas para variables numéricas
-num_stats <- datos_filtrados %>%
-  select(where(is.numeric)) %>%
-  summarise(across(
-    everything(),
-    list(
-      Media = ~mean(.x, na.rm = TRUE),
-      DesvEst = ~sd(.x, na.rm = TRUE),
-      Min = ~min(.x, na.rm = TRUE),
-      Q1 = ~quantile(.x, 0.25, na.rm = TRUE),
-      Mediana = ~median(.x, na.rm = TRUE),
-      Q3 = ~quantile(.x, 0.75, na.rm = TRUE),
-      Max = ~max(.x, na.rm = TRUE),
-      NAs = ~sum(is.na(.x))
-    ),
-    .names = "{.col}.{.fn}"
-  ))
-
-# Reorganizar tabla numérica en formato largo
-num_stats_long <- num_stats %>%
-  tidyr::pivot_longer(
-    cols = everything(),
-    names_to = c("Variable", ".value"),
-    names_sep = "\\."
-  )
-
-# Estadísticas para variables categóricas
-cat_vars <- datos_filtrados %>%
-  select(where(~is.character(.x) || is.factor(.x)))
-
-if (ncol(cat_vars) > 0) {
-  cat_stats <- data.frame(
-    Variable = names(cat_vars),
-    Unicos = sapply(cat_vars, function(x) length(unique(x))),
-    NAs = sapply(cat_vars, function(x) sum(is.na(x)))
-  )
-} else {
-  cat_stats <- NULL
+# Función para obtener estadísticas descriptivas
+obtener_estadisticas <- function(df, nombre_base) {
+  
+  # Excluir variables no relevantes
+  datos <- df %>% select(-id, -Dominio, -Depto)
+  
+  # Variables numéricas
+  num_stats <- datos %>%
+    select(where(is.numeric)) %>%
+    summarise(across(
+      everything(),
+      list(
+        Media = ~mean(.x, na.rm = TRUE),
+        DesvEst = ~sd(.x, na.rm = TRUE),
+        Min = ~min(.x, na.rm = TRUE),
+        Q1 = ~quantile(.x, 0.25, na.rm = TRUE),
+        Mediana = ~median(.x, na.rm = TRUE),
+        Q3 = ~quantile(.x, 0.75, na.rm = TRUE),
+        Max = ~max(.x, na.rm = TRUE),
+        NAs = ~sum(is.na(.x))
+      ),
+      .names = "{.col}.{.fn}"
+    ))
+  
+  # Reorganizar en formato largo
+  num_stats_long <- num_stats %>%
+    pivot_longer(
+      cols = everything(),
+      names_to = c("Variable", ".value"),
+      names_sep = "\\."
+    )
+  
+  # Variables categóricas
+  cat_vars <- datos %>%
+    select(where(~is.character(.x) || is.factor(.x)))
+  
+  if (ncol(cat_vars) > 0) {
+    cat_stats <- data.frame(
+      Variable = names(cat_vars),
+      Unicos = sapply(cat_vars, function(x) length(unique(x))),
+      NAs = sapply(cat_vars, function(x) sum(is.na(x)))
+    )
+  } else {
+    cat_stats <- NULL
+  }
+  
+  # Combinar ambas
+  estadisticas <- bind_rows(num_stats_long, cat_stats) %>%
+    mutate(Base = nombre_base)
+  
+  return(estadisticas)
 }
 
-# Combinar ambas
-resumen <- bind_rows(num_stats_long, cat_stats)
+# Calcular estadísticas para Train y Test
+stats_train <- obtener_estadisticas(train_hogares_final, "Train Hogares Final")
+stats_test  <- obtener_estadisticas(test_hogares_final,  "Test Hogares Final")
 
-# Crear tabla con gt
-tabla_estadisticas <- resumen %>%
-  gt() %>%
+# Unir ambas bases en una sola tabla
+estadisticas_hogares <- bind_rows(stats_train, stats_test)
+
+# Crear tabla única con subtítulos por base
+tabla_estadisticas <- estadisticas_hogares %>%
+  gt(groupname_col = "Base") %>%   # 👈 Agrupa por base (subtítulos)
   tab_header(
-    title = "Estadísticas Descriptivas: train_hogares_final"
+    title = "Estadísticas Descriptivas: Train y Test Hogares Final"
+  ) %>%
+  cols_label(
+    Variable = "Variable",
+    Media = "Media",
+    DesvEst = "Desv. Estándar",
+    Min = "Mínimo",
+    Q1 = "Q1",
+    Mediana = "Mediana",
+    Q3 = "Q3",
+    Max = "Máximo",
+    NAs = "N° NAs",
+    Unicos = "N° Únicos"
   ) %>%
   fmt_number(
     columns = c(Media, DesvEst, Min, Q1, Mediana, Q3, Max),
     decimals = 2
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold", color = "white"),
+    locations = cells_row_groups()
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "gray40"),
+    locations = cells_row_groups()
+  ) %>%
+  opt_table_font(font = list(google_font("Roboto"))) %>%
+  tab_options(
+    row_group.as_column = FALSE,    # 👈 subtítulo, no columna
+    table.font.size = px(13),
+    table.width = pct(100)
   )
 
-# Exportar a PDF
-gtsave(tabla_estadisticas, "Tablas y Graficos/12.Estadisticas_Descriptivas.html")
-webshot2::webshot("Tablas y Graficos/12.Estadisticas_Descriptivas.html", "Tablas y Graficos/12.Estadisticas_Descriptivas.pdf")
+# Exportar tabla a HTML, PDF y PNG
+dir.create("Tablas y Graficos", showWarnings = FALSE)
+
+# HTML
+gtsave(tabla_estadisticas, "Tablas y Graficos/12.Estadisticas_Descriptivas_Train_y_Test.html")
+
+# PDF
+webshot2::webshot(
+  "Tablas y Graficos/12.Estadisticas_Descriptivas_Train_y_Test.html",
+  "Tablas y Graficos/12.Estadisticas_Descriptivas_Train_y_Test.pdf"
+)
 
 # PNG
-gtsave(tabla_estadisticas, "Tablas y Graficos/12.Estadisticas_Descriptivas.png")
+gtsave(tabla_estadisticas, "Tablas y Graficos/12.Estadisticas_Descriptivas_Train_y_Test.png")
 
 # Mostrar en pantalla
 tabla_estadisticas
 
 ```
+
+
 
 ## 3. Modelos y Resultados
 
@@ -1140,9 +1426,9 @@ test_hogares_final
 ```
 
 
-
+# ELASTIC NET
 ```{r}
-###
+
 ```
 
 
