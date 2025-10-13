@@ -58,7 +58,8 @@ pacman::p_load(
   MLmetrics,     # Colección de métricas de evaluación para modelos de machine learning
   rpart,         # Implementar arboles de decision
   rpart.plot,    # Graficos de arboles
-  Metrics        # Evaluar modelos predictivos
+  Metrics,        # Evaluar modelos predictivos
+  pROC
 )
 
 # Verificar paquetes cargados
@@ -1420,11 +1421,441 @@ test_hogares_final
 ```
 
 
+
 # ELASTIC NET
+
 ```{r}
+# Eliminar variables no predictoras
+train_modelo_EN <- train_hogares_final %>%
+  select(-id, -Dominio, -Depto, -Parentesco_jefe)
+
+test_modelo_EN <- test_hogares_final %>%
+  select(-id, -Dominio, -Depto, -Parentesco_jefe)
+
+# Crear matrices
+X_train_EN <- model.matrix(Pobre ~ ., data = train_modelo_EN)[, -1]
+y_train_EN <- train_modelo_EN$Pobre
+X_test <- model.matrix(~ ., data = test_modelo_EN)[, -1]
+
+# Control de entrenamiento
+set.seed(2025)
+
+control <- trainControl(
+  method = "cv",              # Validación cruzada
+  number = 5,                 # 5 folds
+  classProbs = TRUE,          # Necesario para ROC
+  summaryFunction = twoClassSummary,
+  savePredictions = TRUE
+)
+
+modelo_ElasticNet <- train(
+  x = X_train_EN,
+  y = y_train_EN,
+  method = "glmnet",
+  trControl = control,
+  metric = "ROC",             # Optimiza AUC
+  family = "binomial",
+  tuneLength = 10
+)
+
+# Resultados
+print(modelo_ElasticNet)
+plot(modelo_ElasticNet)
+
+```
+```{r}
+# Confirmar dimensiones
+dim(X_train_EN)
+length(y_train_EN)
+table(y_train_EN)
+```
+Revisar que el modelo clasifique correctamente "Pobre" como la clase positiva en las predicciones, garantizando que no se invierta la interpretación de las probabilidades ni de las métricas de desempeño por ejemplo en AUC o sensibilidad.
+Nota: En Caret, la clase positiva es siempre el segundo nivel del factor de respuesta.
+
+```{r}
+modelo_ElasticNet$trainingData$.outcome %>% levels()
+```
+```{r}
+getTrainPerf(modelo_ElasticNet)
 
 ```
 
+```{r}
+roc_obj <- roc(response = modelo_ElasticNet$pred$obs,
+               predictor = modelo_ElasticNet$pred$Pobre,
+               levels = c("NoPobre", "Pobre"))
+
+plot(roc_obj, col = "#2C7BB6", main = "Curva ROC - Elastic Net (Validación Cruzada)")
+auc(roc_obj)
+
+```
+
+```{r}
+pred_class <- ifelse(modelo_ElasticNet$pred$Pobre >= 0.5, "Pobre", "NoPobre") %>%
+  factor(levels = c("NoPobre", "Pobre"))
+
+confusionMatrix(pred_class, modelo_ElasticNet$pred$obs, positive = "Pobre")
+
+```
+- predecir
+```{r}
+pred_test <- predict(modelo_ElasticNet, newdata = X_test, type = "prob")
+
+```
+
+```{r}
+resultados <- data.frame(
+  id = test_hogares_final$id,
+  Prob_Pobre = pred_test[, "Pobre"]
+)
+
+head(resultados)
+
+```
+
+```{r}
+# 1️⃣ Predicciones de probabilidad (para umbral estándar 0.5)
+pred_test <- predict(modelo_ElasticNet, newdata = X_test, type = "prob")
+
+# 2️⃣ Convertir probabilidades a clases binarias
+pred_test_clase <- ifelse(pred_test[, "Pobre"] >= 0.5, 1, 0)
+
+# 3️⃣ Crear dataframe final con id y clase binaria
+resultados2 <- data.frame(
+  id = test_hogares_final$id,
+  Pobre = pred_test_clase
+)
+
+# 4️⃣ Verificar estructura
+head(resultados2)
+table(resultados2$Pobre)
+
+```
+
+
+
+
+```{r}
+# 🧹 Eliminar variables no predictoras
+# ------------------------------------------------------------
+train_modelo_EN <- train_hogares_final %>%
+  select(-id, -Dominio, -Depto, -Parentesco_jefe)
+
+test_modelo_EN <- test_hogares_final %>%
+  select(-id, -Dominio, -Depto, -Parentesco_jefe)
+
+# ------------------------------------------------------------
+# 🧩 Crear matrices
+# ------------------------------------------------------------
+train_modelo_EN$Pobre <- factor(train_modelo_EN$Pobre, levels = c("NoPobre", "Pobre"))
+X_train_EN <- model.matrix(Pobre ~ ., data = train_modelo_EN)[, -1]
+y_train_EN <- train_modelo_EN$Pobre
+X_test <- model.matrix(~ ., data = test_modelo_EN)[, -1]
+
+# ------------------------------------------------------------
+# ⚙️ Control de entrenamiento con métricas extendidas
+# ------------------------------------------------------------
+fiveStats <- function(...) c(prSummary(...))  # prSummary incluye F1, Recall, Precision, ROC
+
+control <- trainControl(
+  method = "cv",               # Validación cruzada
+  number = 5,                  # 5 folds
+  classProbs = TRUE,           # Necesario para ROC y F1
+  summaryFunction = fiveStats, # Calcula ROC, F1, Precision y Recall
+  savePredictions = TRUE
+)
+
+# ------------------------------------------------------------
+# 🚀 Entrenamiento del modelo Elastic Net
+# ------------------------------------------------------------
+set.seed(2025)
+
+modelo_EN_metrics <- train(
+  x = X_train_EN,
+  y = y_train_EN,
+  method = "glmnet",
+  trControl = control,
+  metric = "ROC",              # Optimiza AUC
+  family = "binomial",
+  tuneLength = 10
+)
+
+# ------------------------------------------------------------
+# 📊 Resultados del modelo
+# ------------------------------------------------------------
+print(modelo_EN_metrics)
+plot(modelo_EN_metrics)
+
+# Ver los valores óptimos de alpha y lambda
+modelo_EN_metrics$bestTune
+
+```
+```{r}
+# 1) Sanidad básica de columnas (deben coincidir con el entrenamiento)
+stopifnot(ncol(X_test) == ncol(X_train_EN))
+
+# 2) Predicción de CLASE sobre la matriz de prueba correcta
+pred_test_lab <- predict(
+  modelo_EN_F,
+  newdata = X_test,
+  type = "raw"            # devuelve "NoPobre" / "Pobre"
+)
+
+# Asegurar niveles y orden (negativo/positivo)
+pred_test_lab <- factor(pred_test_lab, levels = c("NoPobre", "Pobre"))
+
+# 3) Armar el data.frame con id y etiqueta predicha
+predictSample <- data.frame(
+  id    = test_hogares_final$id,
+  Pobre = pred_test_lab,
+  check.names = FALSE
+)
+
+# 4) Vistazos rápidos
+head(predictSample)
+table(predictSample$Pobre, useNA = "ifany")
+
+```
+
+```{r}
+# ------------------------------------------------------------
+# 🔹 Crear resultados binarios 0 / 1
+# ------------------------------------------------------------
+resultados2 <- predictSample %>%
+  mutate(
+    Pobre = ifelse(Pobre == "Pobre", 1, 0)  # 1 = Pobre, 0 = NoPobre
+  ) %>%
+  select(id, Pobre)
+
+# ------------------------------------------------------------
+# 🔎 Vista previa y chequeo de balance
+# ------------------------------------------------------------
+head(resultados2)
+table(resultados2$Pobre, useNA = "ifany")
+
+```
+```{r}
+# ------------------------------------------------------------
+# 🧩 Crear nombre dinámico del archivo
+# ------------------------------------------------------------
+
+# Redondear y limpiar lambda y alpha para usar en el nombre del archivo
+lambda_str <- gsub(
+  "\\.", "_", 
+  as.character(round(modelo_EN_F$bestTune$lambda, 4))  # más precisión
+)
+
+alpha_str <- gsub(
+  "\\.", "_", 
+  as.character(modelo_EN_F$bestTune$alpha)
+)
+
+# Crear el nombre del archivo
+name <- paste0(
+  "ElasticNet_lambda_", lambda_str,
+  "_alpha_", alpha_str,
+  ".csv"
+)
+
+# ------------------------------------------------------------
+# 📤 Exportar resultados binarios (resultados2)
+# ------------------------------------------------------------
+write.csv(resultados2, name, row.names = FALSE)
+
+# Confirmar nombre generado y ruta
+cat("✅ Archivo generado correctamente:", name, "\n")
+
+```
+```{r}
+# 🧩 Preparación de datos (sin modificar los existentes)
+# ------------------------------------------------------------
+train_modelo_F1opt <- train_hogares_final %>%
+  select(-id, -Dominio, -Depto, -Parentesco_jefe)
+
+test_modelo_F1opt <- test_hogares_final %>%
+  select(-id, -Dominio, -Depto, -Parentesco_jefe)
+
+# Variable objetivo como factor binario
+train_modelo_F1opt$Pobre <- factor(train_modelo_F1opt$Pobre, levels = c("NoPobre", "Pobre"))
+
+# Crear matrices nuevas
+X_train_F1opt <- model.matrix(Pobre ~ ., data = train_modelo_F1opt)[, -1]
+y_train_F1opt <- train_modelo_F1opt$Pobre
+X_test_F1opt  <- model.matrix(~ ., data = test_modelo_F1opt)[, -1]
+
+# ------------------------------------------------------------
+# ⚙️ Control de entrenamiento optimizando F1
+# ------------------------------------------------------------
+fiveStats_F1opt <- function(...) c(prSummary(...))  # F1, Precision, Recall, ROC
+
+ctrl_F1opt <- trainControl(
+  method = "cv",
+  number = 5,
+  classProbs = TRUE,
+  summaryFunction = fiveStats_F1opt,
+  savePredictions = TRUE
+)
+
+# ------------------------------------------------------------
+# 🚀 Entrenamiento Elastic Net (Optimiza F1)
+# ------------------------------------------------------------
+set.seed(2025)
+
+modelo_EN_F1opt <- train(
+  x = X_train_F1opt,
+  y = y_train_F1opt,
+  method = "glmnet",
+  trControl = ctrl_F1opt,
+  metric = "F",              # Optimiza F1 (métrica oficial Kaggle)
+  family = "binomial",
+  tuneLength = 15
+)
+
+# ------------------------------------------------------------
+# 📊 Revisar resultado
+# ------------------------------------------------------------
+print(modelo_EN_F1opt)
+modelo_EN_F1opt$bestTune
+
+# ------------------------------------------------------------
+# 🔮 Predicciones finales sobre test
+# ------------------------------------------------------------
+pred_test_F1opt <- predict(modelo_EN_F1opt, newdata = X_test_F1opt, type = "raw")
+
+# Crear archivo en formato Kaggle (id + pobre)
+submission_F1opt <- data.frame(
+  id = test_hogares_final$id,
+  pobre = ifelse(pred_test_F1opt == "Pobre", 1, 0)
+)
+
+# ------------------------------------------------------------
+# 💾 Exportar con nombre automático
+# ------------------------------------------------------------
+lambda_str_F1opt <- gsub("\\.", "_", as.character(round(modelo_EN_F1opt$bestTune$lambda, 6)))
+alpha_str_F1opt  <- gsub("\\.", "_", as.character(modelo_EN_F1opt$bestTune$alpha))
+
+file_name_F1opt <- paste0("EN_F1_lambda_", lambda_str_F1opt,
+                          "_alpha_", alpha_str_F1opt, ".csv")
+
+write.csv(submission_F1opt, file_name_F1opt, row.names = FALSE)
+
+cat("✅ Archivo F1-Optimizado listo para Kaggle:", file_name_F1opt, "\n")
+
+```
+
+
+
+
+```{r}
+# 🧩 Preparación de los datos
+# ------------------------------------------------------------
+# train_modelo_EN ya limpio y con Pobre como factor (NoPobre / Pobre)
+X_train_EN <- model.matrix(Pobre ~ ., data = train_modelo_EN)[, -1]
+y_train_EN <- train_modelo_EN$Pobre
+
+# ------------------------------------------------------------
+# 🧠 Función de evaluación
+# ------------------------------------------------------------
+# prSummary calcula métricas basadas en ROC, F1, Sens, Spec, etc.
+# Aquí puedes añadir más si lo deseas
+fiveStats <- function(...) {
+  c(prSummary(...))
+}
+
+# ------------------------------------------------------------
+# ⚙️ Control de entrenamiento
+# ------------------------------------------------------------
+ctrl <- trainControl(
+  method = "cv",               # Validación cruzada
+  number = 5,                  # 5 folds
+  classProbs = TRUE,           # Necesario para ROC y F1
+  summaryFunction = fiveStats, # Usa tus métricas personalizadas
+  savePredictions = TRUE
+)
+
+# ------------------------------------------------------------
+# 🚀 Entrenamiento del modelo Elastic Net
+# ------------------------------------------------------------
+set.seed(2025)
+
+modelo_EN_F <- train(
+  x = X_train_EN,
+  y = y_train_EN,
+  method = "glmnet",
+  trControl = ctrl,
+  metric = "F",                # Maximiza F1
+  family = "binomial",
+  tuneGrid = expand.grid(
+    alpha  = seq(0, 1, by = 0.1),             # Mezcla LASSO/Ridge
+    lambda = 10^seq(-3, 3, length = 10)       # Penalización
+  )
+)
+
+# ------------------------------------------------------------
+# 📊 Resultados
+# ------------------------------------------------------------
+print(modelo_EN_F)
+plot(modelo_EN_F)
+
+```
+```{r}
+# Predicción usando la matriz de prueba correcta
+pred_test_lab <- predict(modelo_EN_F, newdata = X_test, type = "raw")
+
+# Armar dataframe con id y etiqueta predicha
+predictSample <- data.frame(
+  id = test_hogares_final$id,
+  Pobre = pred_test_lab
+)
+
+head(predictSample)
+table(predictSample$Pobre)
+
+```
+
+
+```{r}
+# Crear resultados binarios 0/1
+resultados2 <- predictSample |>
+  mutate(Pobre = ifelse(Pobre == "Pobre", 1, 0)) |>
+  select(id, Pobre)
+
+# Vista previa
+head(resultados2)
+table(resultados2$Pobre)
+
+```
+```{r}
+# ------------------------------------------------------------
+# 🧩 Crear nombre dinámico del archivo
+# ------------------------------------------------------------
+
+lambda_str <- gsub(
+  "\\.", "_", 
+  as.character(round(modelo_EN_F$bestTune$lambda, 4))
+)
+
+alpha_str <- gsub(
+  "\\.", "_", 
+  as.character(modelo_EN_F$bestTune$alpha)
+)
+
+name <- paste0(
+  "ElasticNet_lambda_", lambda_str,
+  "_alpha_", alpha_str,
+  ".csv"
+)
+
+# ------------------------------------------------------------
+# 📤 Exportar resultados binarios (resultados2)
+# ------------------------------------------------------------
+write.csv(resultados2, name, row.names = FALSE)
+
+# Confirmar nombre generado
+name
+
+
+```
 
 
 
