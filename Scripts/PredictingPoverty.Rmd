@@ -1273,16 +1273,16 @@ dicc_final <- dicc_final %>%
 
 # Exportar tabla en HTML, PDF y PNG
 # HTML
-gtsave(dicc_final, "Tablas y Graficos/10.Diccionario_train_hogares_final.html")
+gtsave(dicc_final, "Tablas y Graficos/11.Diccionario_train_hogares_final.html")
 
 # PDF
 webshot2::webshot(
-  "Tablas y Graficos/10.Diccionario_train_hogares_final.html",
-  "Tablas y Graficos/10.Diccionario_train_hogares_final.pdf"
+  "Tablas y Graficos/11.Diccionario_train_hogares_final.html",
+  "Tablas y Graficos/11.Diccionario_train_hogares_final.pdf"
 )
 
 # PNG
-gtsave(dicc_final, "Tablas y Graficos/10.Diccionario_train_hogares_final.png")
+gtsave(dicc_final, "Tablas y Graficos/11.Diccionario_train_hogares_final.png")
 
 # Mostrar en consola
 dicc_final
