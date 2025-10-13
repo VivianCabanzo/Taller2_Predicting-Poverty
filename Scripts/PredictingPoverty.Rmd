@@ -1175,9 +1175,7 @@ tabla_faltantes_test_final
 Se evidencia un valor faltante en la variable Actividad_Ocup para cada base final, por lo que se procede a imputar con la moda:
 
 ```{r}
-# -----------------------------------------------------------
-# 🧩 Función robusta: imputar por moda con impresión clara por base
-# -----------------------------------------------------------
+# Función robusta: imputar por moda con impresión clara por base
 imputar_moda <- function(df, variable, nombre_base = "Desconocida") {
   var <- df[[variable]]
   
@@ -1219,9 +1217,7 @@ imputar_moda <- function(df, variable, nombre_base = "Desconocida") {
   return(df2)
 }
 
-# -----------------------------------------------------------
-# 🧠 Aplicar imputación a TRAIN y TEST con identificación clara
-# -----------------------------------------------------------
+# Aplicar imputación a TRAIN y TEST con identificación clara
 
 train_hogares_final <- train_hogares_final %>%
   imputar_moda("Actividad_Ocup", nombre_base = "TRAIN Hogares Final") %>%
@@ -1231,10 +1227,8 @@ test_hogares_final <- test_hogares_final %>%
   imputar_moda("Actividad_Ocup", nombre_base = "TEST Hogares Final") %>%
   imputar_moda("Nivel_educativo", nombre_base = "TEST Hogares Final")
 
-# -----------------------------------------------------------
-# ✅ Resumen final
-# -----------------------------------------------------------
-cat("\n✅ RESUMEN FINAL DE NAs:\n")
+# Resumen final
+cat("\n RESUMEN FINAL DE NAs:\n")
 cat("TRAIN - Actividad_Ocup:", sum(is.na(train_hogares_final$Actividad_Ocup)), "\n")
 cat("TRAIN - Nivel_educativo:", sum(is.na(train_hogares_final$Nivel_educativo)), "\n")
 cat("TEST  - Actividad_Ocup:", sum(is.na(test_hogares_final$Actividad_Ocup)), "\n")
