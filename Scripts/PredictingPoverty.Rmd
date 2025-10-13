@@ -1361,7 +1361,7 @@ estadisticas_hogares <- bind_rows(stats_train, stats_test)
 
 # Crear tabla única con subtítulos por base
 tabla_estadisticas <- estadisticas_hogares %>%
-  gt(groupname_col = "Base") %>%   # 👈 Agrupa por base (subtítulos)
+  gt(groupname_col = "Base") %>%   #Agrupa por base (subtítulos)
   tab_header(
     title = "Estadísticas Descriptivas: Train y Test Hogares Final"
   ) %>%
@@ -1391,7 +1391,7 @@ tabla_estadisticas <- estadisticas_hogares %>%
   ) %>%
   opt_table_font(font = list(google_font("Roboto"))) %>%
   tab_options(
-    row_group.as_column = FALSE,    # 👈 subtítulo, no columna
+    row_group.as_column = FALSE,    # subtítulo cada base
     table.font.size = px(13),
     table.width = pct(100)
   )
