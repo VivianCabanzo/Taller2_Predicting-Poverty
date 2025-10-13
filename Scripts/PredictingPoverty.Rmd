@@ -150,9 +150,6 @@ comp_bd_hogares <- comp_bd_hogares %>%
     Variables = "Variables"
   )
 
-# Mostrar en pantalla
-comp_bd_hogares
-
 # Crear carpeta "Tablas y Graficos"
 if (!dir.exists("Tablas y Graficos")) dir.create("Tablas y Graficos")
 
@@ -165,6 +162,10 @@ webshot2::webshot(
 )
 
 gtsave(comp_bd_hogares, "Tablas y Graficos/1.Comparacion_bases_hogares.png")
+
+
+# Mostrar en pantalla
+comp_bd_hogares
 
 ```
 
@@ -226,9 +227,6 @@ comb_tipo_var_hog <- comb_tipo_var_hog %>%
     Tipo_test = "Tipo de variable"
   )
 
-# Mostrar en pantalla
-comb_tipo_var_hog
-
 # Exportar dentro de la subcarpeta "Tablas y Graficos"
 gtsave(comb_tipo_var_hog, "Tablas y Graficos/2.Comparacion_tipo_var_hogares.html")
 
@@ -238,6 +236,9 @@ webshot2::webshot(
 )
 
 gtsave(comb_tipo_var_hog, "Tablas y Graficos/2.Comparacion_tipo_var_hogares.png")
+
+# Mostrar en pantalla
+comb_tipo_var_hog
 
 ```
 
@@ -359,9 +360,6 @@ diccionario_vars <- diccionario_vars %>%
     Descripcion = "Descripción"
   )
 
-# Mostrar en pantalla
-diccionario_vars
-
 # Exportar en los tres formatos dentro de la carpeta
 
 # HTML
@@ -375,6 +373,9 @@ webshot2::webshot(
 
 # PNG
 gtsave(diccionario_vars, "Tablas y Graficos/3.Diccionario_train_hogares2.png")
+
+# Mostrar en pantalla
+diccionario_vars
 
 ```
 
@@ -422,9 +423,6 @@ grafico_faltantes <- ggplot(faltantes_comp_hog, aes(x = Variable,
   scale_fill_manual(values = c("Entrenamiento" = "lightyellow4",
                                "Prueba"        = "#FFFF00")) 
 
-# Mostrar el gráfico en consola
-print(grafico_faltantes)
-
 # Exportar gráfico a PDF
 ggsave(
   filename = "Tablas y Graficos/4.Faltantes_Train_Hogares.pdf",
@@ -440,6 +438,8 @@ ggsave(
   dpi = 300
 )
 
+# Mostrar en pantalla
+print(grafico_faltantes)
 
 ```
 
@@ -487,9 +487,6 @@ comp_bd_personas <- comp_bd_personas %>%
     Variables = "Variables"
   )
 
-# Mostrar en pantalla
-comp_bd_personas
-
 # Crear carpeta "Tablas y Graficos"
 if (!dir.exists("Tablas y Graficos")) dir.create("Tablas y Graficos")
 
@@ -502,6 +499,10 @@ webshot2::webshot(
 )
 
 gtsave(comp_bd_personas, "Tablas y Graficos/5.Comparacion_bases_personas.png")
+
+# Mostrar en pantalla
+comp_bd_personas
+
 ```
 Del analisis de las variables en común en las bases de Personas, se identifican 63 que se encuentran en la base de entrenamiento y de prueba, se procederá a realizar un analisis de valores faltantes para seleccionar de forma adecuada variables que permitan predecir el estado de pobreza.
 
@@ -554,8 +555,6 @@ porc_faltantes_pers <- ggplot(faltantes_comp_pers, aes(x = Categoria, y = N_vari
                "Test Personas"  = "#FFD700")  # amarillo dorado
   )
 
-# Mostrar en consola
-print(porc_faltantes_pers)
 
 # Exportar gráfico en PDF y PNG dentro de "Tablas y Graficos"
 # PDF
@@ -572,6 +571,9 @@ ggsave(
   width = 8, height = 6,
   dpi = 300
 )
+
+# Mostrar en consola
+print(porc_faltantes_pers)
 
 ```
 
@@ -624,9 +626,6 @@ tabla_faltantes_pers <- faltantes_interes_pers %>%
     heading.align = "center"
   )
 
-# Mostrar en consola
-tabla_faltantes_pers
-
 # Exportar tabla en HTML, PDF y PNG dentro de "Tablas y Graficos"
 # HTML
 gtsave(tabla_faltantes_pers, "Tablas y Graficos/7.Faltantes_Train_vs_Test_0a30.html")
@@ -639,6 +638,9 @@ webshot2::webshot(
 
 # PNG
 gtsave(tabla_faltantes_pers, "Tablas y Graficos/7.Faltantes_Train_vs_Test_0a30.png")
+
+# Mostrar en consola
+tabla_faltantes_pers
 
 ```
 ```{r}
@@ -727,9 +729,6 @@ grafico_faltantes_pers <- ggplot(
     values = c("Train Personas" = "lightyellow4", "Test Personas" = "#FFFF00")
   )
 
-# Mostrar gráfico en pantalla
-print(grafico_faltantes_pers)
-
 # Exportar gráfico a PDF y PNG dentro de la carpeta
 # PDF
 ggsave(
@@ -747,6 +746,9 @@ ggsave(
   height = 6,
   dpi = 300
 )
+
+# Mostrar gráfico en consola
+print(grafico_faltantes_pers)
 
 ```
 ### - Base de Entrenamiento Final
@@ -802,7 +804,7 @@ train_hogares_final <- train_hogares_final %>%
 glimpse(train_hogares_final)
 
 ```
-Revision de datos faltantes:
+Revision de datos faltantes en train y test hogares:
 ```{r}
 # Calcular número y porcentaje de faltantes
 faltantes_train_final <- train_hogares_final %>%
@@ -830,9 +832,6 @@ tabla_faltantes_final <- faltantes_train_final %>%
     decimals = 2
   )
 
-# Mostrar en pantalla
-tabla_faltantes_final
-
 # Exportar tabla en HTML, PDF y PNG
 
 # HTML temporal
@@ -846,6 +845,10 @@ webshot2::webshot(
 
 # PNG
 gtsave(tabla_faltantes_final, "Tablas y Graficos/9.Faltantes_train_hogares_final.png")
+
+# Mostrar en consola
+tabla_faltantes_final
+
 ```
 ### - Base de Prueba Final
 
@@ -927,9 +930,6 @@ tabla_faltantes_test_final <- faltantes_test_final %>%
     decimals = 2
   )
 
-# Mostrar en pantalla
-tabla_faltantes_test_final
-
 # Exportar tabla en HTML, PDF y PNG
 
 # HTML temporal (necesario para generar PDF)
@@ -943,12 +943,16 @@ webshot2::webshot(
 
 # PNG
 gtsave(tabla_faltantes_test_final, "Tablas y Graficos/10.Faltantes_test_hogares_final.png")
+
+# Mostrar en pantalla
+tabla_faltantes_test_final
+
 ```
 
 Se evidencia un valor faltante en la variable Actividad_Ocup para cada base final, por lo que se procede a imputar con la moda:
 
 ```{r}
-# Funcion Imputar NAs con la moda
+# Función para imputar NAs con la moda
 imputar_moda <- function(df, variable) {
   moda <- df %>%
     filter(!is.na(.data[[variable]])) %>%
@@ -961,15 +965,42 @@ imputar_moda <- function(df, variable) {
     mutate("{variable}" := ifelse(is.na(.data[[variable]]), moda, .data[[variable]]))
 }
 
-# Imputar en train_hogares_final
-train_hogares_final <- imputar_moda(train_hogares_final, "Actividad_Ocup")
+# Verificar faltantes antes de imputar
+cat("ANTES DE IMPUTAR:\n")
+cat("Train - Actividad_Ocup:", sum(is.na(train_hogares_final$Actividad_Ocup)), "\n")
+cat("Train - Nivel_educativo:", sum(is.na(train_hogares_final$Nivel_educativo)), "\n")
+cat("Test  - Actividad_Ocup:", sum(is.na(test_hogares_final$Actividad_Ocup)), "\n")
+cat("Test  - Nivel_educativo:", sum(is.na(test_hogares_final$Nivel_educativo)), "\n\n")
 
-# Imputar en test_hogares_final
-test_hogares_final <- imputar_moda(test_hogares_final, "Actividad_Ocup")
+# Imputar por moda en ambas variables y bases
+train_hogares_final <- train_hogares_final %>%
+  imputar_moda("Actividad_Ocup") %>%
+  imputar_moda("Nivel_educativo")
 
-# Chequear que no queden NAs
-cat("Faltantes en train_hogares_final:", sum(is.na(train_hogares_final$Actividad_Ocup)), "\n")
-cat("Faltantes en test_hogares_final:", sum(is.na(test_hogares_final$Actividad_Ocup)), "\n")
+test_hogares_final <- test_hogares_final %>%
+  imputar_moda("Actividad_Ocup") %>%
+  imputar_moda("Nivel_educativo")
+
+# Convertir ambas variables a factores
+train_hogares_final <- train_hogares_final %>%
+  mutate(
+    Actividad_Ocup = as.factor(Actividad_Ocup),
+    Nivel_educativo = as.factor(Nivel_educativo)
+  )
+
+test_hogares_final <- test_hogares_final %>%
+  mutate(
+    Actividad_Ocup = as.factor(Actividad_Ocup),
+    Nivel_educativo = as.factor(Nivel_educativo)
+  )
+
+# Verificar resultados después de imputar
+cat("DESPUÉS DE IMPUTAR:\n")
+cat("Train - Actividad_Ocup:", sum(is.na(train_hogares_final$Actividad_Ocup)), "\n")
+cat("Train - Nivel_educativo:", sum(is.na(train_hogares_final$Nivel_educativo)), "\n")
+cat("Test  - Actividad_Ocup:", sum(is.na(test_hogares_final$Actividad_Ocup)), "\n")
+cat("Test  - Nivel_educativo:", sum(is.na(test_hogares_final$Nivel_educativo)), "\n")
+
 ```
 
 
@@ -977,57 +1008,56 @@ cat("Faltantes en test_hogares_final:", sum(is.na(test_hogares_final$Actividad_O
 Tabla de estadisticas descriptivas de las bases de datos a nivel de hogares.
 
 ```{r}
-# Crear la tabla del diccionario de variables
-tabla_vars_final <- tibble::tibble(
-  Variable = c(
-    "id", "Clase", "Dominio", "Tipo_vivienda", 
-    "Nper", "Depto", "Pobre", 
-    "Parentesco_jefe", "Sexo", "Edad", 
-    "Nivel_educativo", "Actividad_Ocup"
-  ),
-  Descripcion = c(
-    "Llave única del hogar",
-    "Clase de centro poblado: 1. Cabecera; 2. Resto (centros poblados y rural dispersa)",
-    "Dominio geográfico: áreas metropolitanas, cabeceras y resto",
-    "Tipo de vivienda: a. Propia pagada, b. Propia pagando, c. Arriendo/subarriendo, d. Usufructo, e. Ocupante sin título, f. Otra",
-    "Número de personas en el hogar",
-    "Departamento de residencia",
-    "1 = Pobre ; 0 = No pobre (solo en entrenamiento)",
-    "Parentesco con el jefe de hogar (1 = jefe, otros = distintos roles)",
-    "Sexo del jefe de hogar (1 = Hombre, 2 = Mujer)",
-    "Edad del jefe de hogar (en años)",
-    "Nivel educativo alcanzado por el jefe de hogar:\n a. Ninguno, b. Preescolar, c. Básica primaria, d. Básica secundaria, e. Media, f. Superior o universitaria, g. No sabe/no informa",
-    "Condición de actividad u ocupación del jefe de hogar:\n a. Trabajando, b. Buscando trabajo, c. Estudiando, d. Oficios del hogar, e. Incapacitado permanente para trabajar, f. Otra actividad"
+# Crear diccionario automático desde el dataset
+dicc_final <- tibble(
+  Variable = names(train_hogares_final),
+  Descripcion = "Descripción pendiente"
+) %>%
+  mutate(
+    Descripcion = case_when(
+      Variable == "id" ~ "Llave única del hogar",
+      Variable == "Clase" ~ "Clase de centro poblado: 1. Cabecera; 2. Resto (centros poblados y rural dispersa)",
+      Variable == "Dominio" ~ "Dominio geográfico: áreas metropolitanas, cabeceras y resto",
+      Variable == "Tipo_vivienda" ~ "Tipo de vivienda: a. Propia pagada, b. Propia pagando, c. Arriendo/subarriendo, d. Usufructo, e. Ocupante sin título, f. Otra",
+      Variable == "Nper" ~ "Número de personas en el hogar",
+      Variable == "Depto" ~ "Departamento de residencia",
+      Variable == "Pobre" ~ "1 = Pobre ; 0 = No pobre (solo en entrenamiento)",
+      Variable == "Parentesco_jefe" ~ "Parentesco con el jefe de hogar (1 = jefe, otros = distintos roles)",
+      Variable == "Sexo" ~ "Sexo del jefe de hogar (1 = Hombre, 2 = Mujer)",
+      Variable == "Edad" ~ "Edad del jefe de hogar (en años)",
+      Variable == "Nivel_educativo" ~ "Nivel educativo alcanzado por el jefe de hogar:\n a. Ninguno, b. Preescolar, c.Máximo Bachiller , d. Superior o universitaria",
+      Variable == "Actividad_Ocup" ~ "Condición de actividad u ocupación del jefe de hogar:\n a. Trabajando, b. Buscando trabajo, c. Estudiando, d. Oficios del hogar, e. Incapacitado permanente, f. Otra actividad",
+      TRUE ~ Descripcion
+    )
   )
-)
 
-# Crear tabla GT con formato
-tabla_gt <- tabla_vars_final %>%
+# Crear tabla gt
+dicc_final <- dicc_final %>%
   gt() %>%
   tab_header(
-    title = "Diccionario de Variables: Bases Finales (Hogares)"
+    title = "Diccionario de Variables: train_hogares_final"
   ) %>%
   cols_label(
     Variable = "Variable",
     Descripcion = "Descripción"
   )
 
-# Exportar tabla a HTML, PDF y PNG dentro de la carpeta
 
-# HTML temporal (base para PDF/PNG)
-gtsave(tabla_gt, "Tablas y Graficos/11.Diccionario_Variables_Hogares.html")
+# Exportar tabla en HTML, PDF y PNG
+# HTML
+gtsave(dicc_final, "Tablas y Graficos/10.Diccionario_train_hogares_final.html")
 
 # PDF
 webshot2::webshot(
-  "Tablas y Graficos/11.Diccionario_Variables_Hogares.html",
-  "Tablas y Graficos/11.Diccionario_Variables_Hogares.pdf"
+  "Tablas y Graficos/10.Diccionario_train_hogares_final.html",
+  "Tablas y Graficos/10.Diccionario_train_hogares_final.pdf"
 )
 
 # PNG
-gtsave(tabla_gt, "Tablas y Graficos/11.Diccionario_Variables_Hogares.png")
+gtsave(dicc_final, "Tablas y Graficos/10.Diccionario_train_hogares_final.png")
 
-# Mostrar tabla en pantalla
-tabla_gt
+# Mostrar en consola
+dicc_final
 
 ```
 
@@ -1084,15 +1114,12 @@ resumen <- bind_rows(num_stats_long, cat_stats)
 tabla_estadisticas <- resumen %>%
   gt() %>%
   tab_header(
-    title = "Estadísticas Descriptivas: train_hogares_final (sin id, Dominio, Depto)"
+    title = "Estadísticas Descriptivas: train_hogares_final"
   ) %>%
   fmt_number(
     columns = c(Media, DesvEst, Min, Q1, Mediana, Q3, Max),
     decimals = 2
   )
-
-# Mostrar en pantalla
-tabla_estadisticas
 
 # Exportar a PDF
 gtsave(tabla_estadisticas, "Tablas y Graficos/12.Estadisticas_Descriptivas.html")
@@ -1101,7 +1128,13 @@ webshot2::webshot("Tablas y Graficos/12.Estadisticas_Descriptivas.html", "Tablas
 # PNG
 gtsave(tabla_estadisticas, "Tablas y Graficos/12.Estadisticas_Descriptivas.png")
 
+# Mostrar en pantalla
+tabla_estadisticas
+
 ```
+
+
+
 
 
 ## 3. Modelos y Resultados
