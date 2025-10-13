@@ -770,12 +770,11 @@ jefes_hogar <- train_personas2 %>%
 train_hogares_final <- train_hogares_sel %>%
   left_join(jefes_hogar, by = "id")
 
-# Reescalar variable Nivel_educativo en test_hogares_final
+# Reescalar variable Nivel_educativo en train_hogares_final
 train_hogares_final <- train_hogares_final %>%
-  # Excluir el código 9 ("No sabe / no informa")
-  filter(!(Nivel_educativo %in% c(9))) %>%
   mutate(
     Nivel_educativo = case_when(
+      Nivel_educativo == 9 ~ NA_character_,  # convertir "No sabe / no informa" en NA
       Nivel_educativo == 1 ~ "Ninguno",
       Nivel_educativo == 2 ~ "Preescolar",
       Nivel_educativo %in% c(3, 4, 5) ~ "Máximo bachiller",  # Básica primaria/secundaria/media
@@ -784,7 +783,7 @@ train_hogares_final <- train_hogares_final %>%
     ),
     Nivel_educativo = factor(
       Nivel_educativo,
-      levels = c("Ninguno", "Máximo bachiller", "Superior o universitaria"),
+      levels = c("Ninguno", "Preescolar", "Máximo bachiller", "Superior o universitaria"),
       ordered = TRUE
     )
   )
@@ -792,7 +791,7 @@ train_hogares_final <- train_hogares_final %>%
 # Convertir a factor (clasificación)
 train_hogares_final$Pobre <- factor(train_hogares_final$Pobre,
                                     levels = c(0, 1),
-                                    labels = c("No Pobre", "Pobre"))                                    
+                                    labels = c("NoPobre", "Pobre"))                                    
 # Asegurar formato de variables categóricas
 train_hogares_final <- train_hogares_final %>%
   mutate(
@@ -804,7 +803,7 @@ train_hogares_final <- train_hogares_final %>%
 glimpse(train_hogares_final)
 
 ```
-Revision de datos faltantes en train y test hogares:
+Revision de datos faltantes en train hogares:
 ```{r}
 # Calcular número y porcentaje de faltantes
 faltantes_train_final <- train_hogares_final %>%
@@ -850,6 +849,7 @@ gtsave(tabla_faltantes_final, "Tablas y Graficos/9.Faltantes_train_hogares_final
 tabla_faltantes_final
 
 ```
+
 ### - Base de Prueba Final
 
 La base de datos de prueba definitiva para las predicciones de pobreza a nivel de Hogares es:
@@ -860,7 +860,7 @@ test_hogares_final
 test_hogares_sel <- test_hogares2 %>%
   select(id, Clase, Dominio, Tipo_vivienda, Nper, Depto)
 
-# Filtrar jefe de hogar en personas (soporta numérico, factor o carácter)
+# Filtrar jefe de hogar en personas (numérico, factor o carácter)
 jefes_hogar1 <- test_personas2 %>%
   filter(as.character(Parentesco_jefe) == "1") %>%  # se asegura de tomar "1" en cualquier tipo
   select(id, Parentesco_jefe, Sexo, Edad, Nivel_educativo, Actividad_Ocup)
@@ -871,10 +871,9 @@ test_hogares_final <- test_hogares_sel %>%
 
 # Reescalar variable Nivel_educativo en test_hogares_final
 test_hogares_final <- test_hogares_final %>%
-  # Excluir el código 9 ("No sabe / no informa")
-  filter(!(Nivel_educativo %in% c(9))) %>%
   mutate(
     Nivel_educativo = case_when(
+      Nivel_educativo == 9 ~ NA_character_,  # convertir "No sabe / no informa" en NA
       Nivel_educativo == 1 ~ "Ninguno",
       Nivel_educativo == 2 ~ "Preescolar",
       Nivel_educativo %in% c(3, 4, 5) ~ "Máximo bachiller",  # Básica primaria/secundaria/media
@@ -883,7 +882,7 @@ test_hogares_final <- test_hogares_final %>%
     ),
     Nivel_educativo = factor(
       Nivel_educativo,
-      levels = c("Ninguno", "Máximo bachiller", "Superior o universitaria"),
+      levels = c("Ninguno", "Preescolar", "Máximo bachiller", "Superior o universitaria"),
       ordered = TRUE
     )
   )
@@ -901,7 +900,7 @@ glimpse(test_hogares_final)
 
 ```
 
-Revision de datos faltantes:
+Revision de datos faltantes test hogares:
 
 ```{r}
 # Calcular número y porcentaje de faltantes
@@ -1133,16 +1132,19 @@ tabla_estadisticas
 
 ```
 
-
-
-
-
 ## 3. Modelos y Resultados
 
 ```{r}
 train_hogares_final
 test_hogares_final
 ```
+
+
+
+```{r}
+###
+```
+
 
 
 
