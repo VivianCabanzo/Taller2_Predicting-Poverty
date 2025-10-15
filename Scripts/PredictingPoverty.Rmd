@@ -1422,8 +1422,152 @@ test_hogares_final
 
 # ELASTIC NET
 ```{r}
+str(train_hogares_final)
+```
+
+
+# CARTS
+
+El modelo CART utiliza un árbol de decisión binario para predecir la condición de pobreza de los hogares.
+Divide los datos en grupos cada vez más homogéneos según variables como tipo de vivienda, nivel educativo, número de personas y ocupación del jefe del hogar.
+
+Cada división se elige para maximizar la pureza de las clases (pobres o no pobres) y el árbol se poda para evitar sobreajuste.
+
+
+
+```{r}
+
+# --- Métricas personalizadas ---
+fiveStats <- function(...) {
+  c(
+    twoClassSummary(...),
+    defaultSummary(...)
+  )
+}
+
+
+# --- Control de entrenamiento ---
+ctrl <- trainControl(
+  method = "cv",
+  number = 5,
+  summaryFunction = fiveStats,
+  classProbs = TRUE,
+  verboseIter = TRUE,
+  savePredictions = "final"
+)
+
+
+# --- Entrenamiento del modelo CART con Gini ---
+set.seed(123)
+modelo_cart_cv <- train(
+  Pobre ~ Clase + Dominio + Tipo_vivienda + Nper +
+    Sexo + Edad + Nivel_educativo + Actividad_Ocup,
+  data = train_hogares_final,
+  method = "rpart",
+  trControl = ctrl,
+  parms = list(split = "gini"),     # 🔹 Criterio de impureza Gini
+  control = rpart.control(maxdepth = 10, minsplit = 20, cp = 0.001),  # 🔹 Control de complejidad
+  preProcess = c("center", "scale"),
+  tuneGrid = expand.grid(cp = seq(0.001, 0.02, 0.001)),
+  metric = "ROC",
+  na.action = na.omit
+)
+
+# --- Poda del árbol ---
+modelo_cart_cv$finalModel$cptable
+cp_optimo <- modelo_cart_cv$bestTune$cp
+arbol_podado <- prune(modelo_cart_cv$finalModel, cp = cp_optimo)
+
+# --- Visualización ---
+prp(arbol_podado, under = TRUE, branch.lty = 2, yesno = 1,
+    faclen = 0, varlen = 15, box.palette = "-RdYlGn",
+    main = "Árbol CART Podado (Gini)")
+
+
+
+# --- Predicción de probabilidades ---
+test_hogares_final$Prob_Pobre <- predict(
+  modelo_cart_cv, 
+  newdata = test_hogares_final, 
+  type = "prob"
+)[, "Pobre"]
+
+# --- Convertir a 0/1 usando umbral 0.5 ---
+test_hogares_final$pobre <- ifelse(test_hogares_final$Prob_Pobre >= 0.5, 1, 0)
+
+# --- Seleccionar columnas finales ---
+predictSample <- test_hogares_final |> select(id, pobre)
+
+# --- Verificación ---
+summary(predictSample$pobre)
+sum(is.na(predictSample$pobre))  # Debe dar 0
+nrow(predictSample) == nrow(test_hogares_final)  # Debe dar TRUE
+head(predictSample)
+
 
 ```
+```{r}
+set.seed(123)
+modelo_cart_cv <- train(
+  as.formula(paste("Pobre ~", paste(best_vars, collapse = " + "))),
+  data = train_hogares_final,
+  method = "rpart",
+  trControl = ctrl,
+  parms = list(split = "gini"),
+  control = rpart.control(maxdepth = 10, minsplit = 20, cp = 0.001),
+  preProcess = c("center", "scale"),
+  tuneGrid = expand.grid(cp = seq(0.001, 0.02, 0.001)),
+  metric = "ROC",
+  na.action = na.omit
+)
+
+# --- Poda del árbol ---
+modelo_cart_cv$finalModel$cptable
+cp_optimo <- modelo_cart_cv$bestTune$cp
+arbol_podado <- prune(modelo_cart_cv$finalModel, cp = cp_optimo)
+
+prp(arbol_podado, under = TRUE, branch.lty = 2, yesno = 1,
+    faclen = 0, varlen = 15, box.palette = "-RdYlGn",
+    main = "Árbol CART Podado (Gini + RFE)")
+
+
+```
+
+
+```{r}
+
+# Alinear niveles
+for(v in best_vars){
+  if(is.factor(train_hogares_final[[v]])){
+    test_hogares_final[[v]] <- factor(test_hogares_final[[v]], levels = levels(train_hogares_final[[v]]))
+  }
+}
+
+# Predicción de probabilidad
+test_hogares_final$Prob_Pobre <- predict(modelo_cart_cv, newdata = test_hogares_final, type = "prob")[, "Pobre"]
+
+# Predicción binaria
+test_hogares_final$pobre <- ifelse(test_hogares_final$Prob_Pobre >= 0.5, 1, 0)
+
+# Resultado final
+predictSample <- test_hogares_final |> select(id, pobre)
+
+# Validaciones
+sum(is.na(predictSample$pobre))      # Debe ser 0
+nrow(predictSample) == nrow(test_hogares_final)  # Debe ser TRUE
+head(predictSample)
+```
+
+
+
+```{r}
+saveRDS(modelo_cart_cv, file = "modelo_cart_cv_002.rds")
+write.csv(predictSample, "modelo_carT_002.csv", row.names = FALSE)
+
+cat("✅ Modelo guardado como 'modelo_cart_cv_002.rds'\n")
+cat("✅ Predicciones guardadas como 'predicciones_CART_002.csv'\n")
+```
+
 
 
 
