@@ -58,8 +58,7 @@ pacman::p_load(
   MLmetrics,     # Colección de métricas de evaluación para modelos de machine learning
   rpart,         # Implementar arboles de decision
   rpart.plot,    # Graficos de arboles
-  Metrics,       # Evaluar modelos predictivos
-  pROC
+  Metrics        # Evaluar modelos predictivos
 )
 
 # Verificar paquetes cargados
@@ -1419,6 +1418,15 @@ tabla_estadisticas
 train_hogares_final
 test_hogares_final
 ```
+
+
+# ELASTIC NET
+```{r}
+
+```
+
+
+
 
 ### 3.1. Seleccion de modelos y entrenamiento
 
