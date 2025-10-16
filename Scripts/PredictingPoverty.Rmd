@@ -1433,6 +1433,84 @@ Divide los datos en grupos cada vez más homogéneos según variables como tipo 
 
 Cada división se elige para maximizar la pureza de las clases (pobres o no pobres) y el árbol se poda para evitar sobreajuste.
 
+#CARTS VERSIÓN 1
+
+```{r}
+
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(dplyr)
+library(recipes)
+library(themis)
+
+set.seed(123)
+
+# ---- Crear receta con SMOTE ----
+receta_cart <- recipe(
+  Pobre ~ Clase + Dominio + Tipo_vivienda + Nper +
+    Sexo + Edad + Nivel_educativo + Actividad_Ocup,
+  data = train_hogares_final
+) %>%
+  step_dummy(all_nominal_predictors()) %>%  # 1️⃣ Convierte factores a dummies
+  step_smote(Pobre) %>%                     # 2️⃣ Balancea con SMOTE
+  step_center(all_predictors()) %>%         # 3️⃣ Centra variables numéricas
+  step_scale(all_predictors())              # 4️⃣ Escala variables numéricas
+
+# ---- Configuración de control ----
+fiveStats <- function(...) {
+  c(
+    twoClassSummary(...),
+    defaultSummary(...)
+  )
+}
+
+ctrl <- trainControl(
+  method = "cv",
+  number = 5,
+  summaryFunction = fiveStats,
+  classProbs = TRUE,
+  verboseIter = TRUE,
+  savePredictions = "final"
+)
+
+# ---- Entrenamiento del modelo CART ----
+modelo_cart_smote <- train(
+  receta_cart,
+  data = train_hogares_final,
+  method = "rpart",
+  trControl = ctrl,
+  tuneGrid = expand.grid(cp = seq(0.001, 0.02, 0.001)),
+  metric = "ROC"
+)
+
+# ---- Árbol podado ----
+cp_optimo <- modelo_cart_smote$bestTune$cp
+arbol_podado <- prune(modelo_cart_smote$finalModel, cp = cp_optimo)
+
+prp(arbol_podado, under = TRUE, branch.lty = 2,
+    yesno = 1, faclen = 0, varlen = 15,
+    box.palette = "-RdYlGn", main = "Árbol CART Podado (con SMOTE)")
+
+# ---- Predicciones ----
+pred_prob <- predict(modelo_cart_smote, newdata = test_hogares_final, type = "prob")
+
+test_hogares_final$Prob_Pobre <- pred_prob[, "Pobre"]
+test_hogares_final$pobre <- ifelse(test_hogares_final$Prob_Pobre >= 0.5, 1, 0)
+
+predictSample <- test_hogares_final |> select(id, pobre)
+head(predictSample)
+
+saveRDS(modelo_cart_smote, file = "CART_cp_0_004.rds")
+write.csv(predictSample, "CART_cp_0_004.csv", row.names = FALSE)
+
+cat("✅ Modelo guardado como 'modelo_cart_cv_002.rds'\n")
+cat("✅ Predicciones guardadas como 'predicciones_CART_002.csv'\n")
+
+
+```
+
+
 
 
 ```{r}
