@@ -62,7 +62,9 @@ pacman::p_load(
   pROC,          # evaluar modelos de clasificación binaria o multiclase
   ranger,        # Entrenar modelos de Random Forest
   vip,           # visualiza la importancia de las variables
-  forcats        # Manejo de variables categóricas (factores)
+  forcats,       # Manejo de variables categóricas (factores)
+  scales,        #
+  vtable         # Generar tablas de resumen descriptivo de forma rápida y visualmente clara
 )
 
 # Verificar paquetes cargados
@@ -1418,8 +1420,6 @@ tabla_estadisticas
 
 Distribución de la variable Pobre
 ```{r}
-library(scales)
-
 # Calcular conteos y porcentajes
 df_pobre <- train_hogares_final %>%
   count(Pobre) %>%
@@ -1482,14 +1482,6 @@ train_hogares_final
 test_hogares_final
 ```
 
-
-
-#Elastic Net
-```{r}
-
-```
-
-
 ### 3.1. Seleccion de modelos y entrenamiento
 
 ### 3.2. Hiperparametros
@@ -1499,6 +1491,13 @@ test_hogares_final
 ### 3.4. Importancia de las caracteristicas
 
 ## 4. Conclusiones
+
+
+
+
+
+
+
 
 
 
