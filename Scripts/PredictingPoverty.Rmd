@@ -59,7 +59,7 @@ pacman::p_load(
   rpart,         # Implementar arboles de decision
   rpart.plot,    # Graficos de arboles
   Metrics,       # Evaluar modelos predictivos
-  pRoc,          # evaluar modelos de clasificación binaria o multiclase
+  pROC,          # evaluar modelos de clasificación binaria o multiclase
   ranger,        # Entrenar modelos de Random Forest
   vip,           # visualiza la importancia de las variables
   forcats        # Manejo de variables categóricas (factores)
@@ -384,7 +384,7 @@ diccionario_vars
 ```
 
 
-Es necesario resaltar que, si bien las variables que contiene ingresos en la base de entrenamiento fueron eliminadas, no presenta ninguna implicacion ya que, dentro de la base existe la variable "Pobre", la cual por definición representa que los ingresos de determinados hogares son inferiores a la linea de pobreza.
+Es necesario resaltar que, si bien las variables que contiene ingresos en la base de entrenamiento fueron eliminadas puesto que no existen en la base de prueba lo que impide su comparabilidad, no presenta ninguna implicacion ya que, dentro de la base existe la variable "Pobre", la cual por definición representa que los ingresos de determinados hogares son inferiores a la linea de pobreza.
 
 A contiuación, se presentan las variables contenidas en el dataset de entrenamiento de Hogares y se exploran los valores faltantes.
 
@@ -763,7 +763,7 @@ train_hogares_final
 ```{r}
 # Seleccionar variables de hogares
 train_hogares_sel <- train_hogares2 %>%
-  select(id, Clase, Dominio, Tipo_vivienda, Nper, Depto, Pobre)
+  select(id, Clase, Dominio, Tipo_vivienda, Nper, Pobre)
 
 # Filtrar jefe de hogar en personas
 jefes_hogar <- train_personas2 %>%
@@ -920,6 +920,8 @@ train_hogares_final <- train_hogares_final %>%
 head(train_hogares_final)
 ```
 
+Teniendo en cuenta que la variable Parentesco_jefe solo cuenta con valores de 1
+
 Revision de datos faltantes en train hogares:
 ```{r}
 # Calcular número y porcentaje de faltantes
@@ -975,14 +977,14 @@ test_hogares_final
 ```{r}
 # Seleccionar variables de hogares
 test_hogares_sel <- test_hogares2 %>%
-  select(id, Clase, Dominio, Tipo_vivienda, Nper, Depto)
+  select(id, Clase, Dominio, Tipo_vivienda, Nper)
 
 # Filtrar jefe de hogar en personas (numérico, factor o carácter)
 jefes_hogar1 <- test_personas2 %>%
   filter(as.character(Parentesco_jefe) == "1") %>%  # se asegura de tomar "1" en cualquier tipo
   select(id, Parentesco_jefe, Sexo, Edad, Nivel_educativo, Actividad_Ocup)
 
-# Merge hogares + jefe de hogar
+# Merge test hogares + jefe de hogar
 test_hogares_final <- test_hogares_sel %>%
   left_join(jefes_hogar1, by = "id")
 
@@ -1252,7 +1254,6 @@ dicc_final <- tibble(
       Variable == "Dominio" ~ "Dominio geográfico: áreas metropolitanas, cabeceras y resto",
       Variable == "Tipo_vivienda" ~ "Tipo de vivienda: a. Propia (Pagada o Pagando), b. Arriendo/subarriendo, c. Usufructo, d. Ocupante sin título, e. Otra",
       Variable == "Nper" ~ "Número de personas en el hogar",
-      Variable == "Depto" ~ "Departamento de residencia",
       Variable == "Pobre" ~ "1 = Pobre ; 0 = No pobre (solo en base de entrenamiento)",
       Variable == "Parentesco_jefe" ~ "Parentesco con el jefe de hogar (1 = jefe, otros = distintos roles)",
       Variable == "Sexo" ~ "Sexo del jefe de hogar (1 = Hombre, 2 = Mujer)",
@@ -1301,7 +1302,7 @@ Tabla de estadisticas descriptivas para las dos bases de hogares:
 obtener_estadisticas <- function(df, nombre_base) {
   
   # Excluir variables no relevantes
-  datos <- df %>% select(-id, -Dominio, -Depto)
+  datos <- df %>% select(-id, -Dominio)
   
   # Variables numéricas
   num_stats <- datos %>%
