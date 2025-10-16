@@ -58,8 +58,11 @@ pacman::p_load(
   MLmetrics,     # Colección de métricas de evaluación para modelos de machine learning
   rpart,         # Implementar arboles de decision
   rpart.plot,    # Graficos de arboles
-  Metrics,        # Evaluar modelos predictivos
-  pRoc
+  Metrics,       # Evaluar modelos predictivos
+  pRoc,          # evaluar modelos de clasificación binaria o multiclase
+  ranger,        # Entrenar modelos de Random Forest
+  vip,           # visualiza la importancia de las variables
+  forcats        # Manejo de variables categóricas (factores)
 )
 
 # Verificar paquetes cargados
