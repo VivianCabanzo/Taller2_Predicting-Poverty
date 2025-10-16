@@ -1416,12 +1416,77 @@ tabla_estadisticas
 ```
 
 
+Distribución de la variable Pobre
+```{r}
+library(scales)
+
+# Calcular conteos y porcentajes
+df_pobre <- train_hogares_final %>%
+  count(Pobre) %>%
+  mutate(
+    porcentaje = n / sum(n) * 100,
+    label_n = format(n, big.mark = ".", decimal.mark = ","),
+    label_pct = paste0(round(porcentaje, 1), "%")
+  )
+
+# Crear gráfico
+graf_pobre <- ggplot(df_pobre, aes(x = Pobre, y = n, fill = Pobre)) +
+  geom_col(width = 0.6) +
+  scale_y_continuous(
+    labels = comma,
+    expand = expansion(mult = c(0, 0.1))
+  ) +
+  scale_fill_manual(values = c("NoPobre" = "lightyellow4", "Pobre" = "#FFF000")) +
+  geom_text(
+    aes(label = label_n),
+    vjust = 1.3,
+    color = "black",
+    fontface = "bold",
+    size = 4
+  ) +
+  geom_text(
+    aes(label = label_pct),
+    vjust = -0.4,        # ligeramente más cerca del borde
+    color = "black",
+    fontface = "bold",
+    size = 4
+  ) +
+  labs(
+    title = "Distribución variable Pobre
+Muestra de Entrenamiento",
+    x = "Condición de pobreza",
+    y = "Número de hogares"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  )
+
+# Exportar a PDF y PNG
+ggsave("Tablas y Graficos/13.grafico_Pobre.pdf", plot = graf_pobre, width = 7, height = 5)
+ggsave("Tablas y Graficos/13.grafico_Pobre.png", plot = graf_pobre, width = 7, height = 5, dpi = 300)
+
+# Mostrar en consola
+print(graf_pobre)
+
+```
+
+
+
 
 ## 3. Modelos y Resultados
 
 ```{r}
 train_hogares_final
 test_hogares_final
+```
+
+
+
+#Elastic Net
+```{r}
+
 ```
 
 
