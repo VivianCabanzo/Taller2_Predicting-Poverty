@@ -63,8 +63,11 @@ pacman::p_load(
   ranger,        # Entrenar modelos de Random Forest
   vip,           # visualiza la importancia de las variables
   forcats,       # Manejo de variables categóricas (factores)
-  scales,        #
-  vtable         # Generar tablas de resumen descriptivo de forma rápida y visualmente clara
+  scales,        # Formatear valores y ejes en gráficos
+  vtable,        # Generar tablas de resumen descriptivo de forma rápida y visualmente clara
+  recipes,       # Preprocesamiento de datos (pipeline)
+  themis,        # Balancear clases (SMOTE, up/downsampling)
+  ROCR           # Curvas ROC, AUC y métricas de modelos
 )
 
 # Verificar paquetes cargados
