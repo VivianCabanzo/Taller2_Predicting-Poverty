@@ -67,7 +67,8 @@ pacman::p_load(
   vtable,        # Generar tablas de resumen descriptivo de forma rápida y visualmente clara
   recipes,       # Preprocesamiento de datos (pipeline)
   themis,        # Balancear clases (SMOTE, up/downsampling)
-  ROCR           # Curvas ROC, AUC y métricas de modelos
+  ROCR,          # Curvas ROC, AUC y métricas de modelos
+  xgboost        # Algoritmo de Gradient Boosting optimizado
 )
 
 # Verificar paquetes cargados
