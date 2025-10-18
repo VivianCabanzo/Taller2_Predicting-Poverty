@@ -1723,9 +1723,9 @@ ctrl_xgb <- trainControl(
   allowParallel = TRUE
 )
 
-# =========================================
-# 📊 Grid de hiperparámetros XGBoost
-# =========================================
+
+#  Grid de hiperparámetros XGBoost
+
 grid_xgb <- expand.grid(
   nrounds = c(300),
   max_depth = c(4, 6),
@@ -1736,12 +1736,12 @@ grid_xgb <- expand.grid(
   subsample = c(0.8)
 )
 
+grid_xgb
+
 cl <- makeCluster(parallel::detectCores() - 1)
 registerDoParallel(cl)
 
-# =========================================
-# 🚀 Entrenamiento del modelo XGBoost Boosting
-# =========================================
+# Entrenamiento del modelo XGBoost Boosting
 registerDoSEQ()   # Desactiva paralelo
 
 modelo_xgb <- train(
@@ -1753,11 +1753,9 @@ modelo_xgb <- train(
   metric = "ROC"
 )
 
-# =========================================
-# 📈 Resultados del modelo
-# =========================================
+# Resultados del modelo
+
 modelo_xgb
-plot(modelo_xgb)
 varImp(modelo_xgb)
 
 
@@ -1794,7 +1792,7 @@ best_f1 <- slot(perf, "y.values")[[1]][best_f1_index]
 cat("Mejor cutoff encontrado:", round(best_cutoff, 3), "\n")
 cat("F1 máximo obtenido:", round(best_f1, 3), "\n")
 
-best_cutoff <- 0.357
+best_cutoff <- 0.343
 
 # Predicciones en test
 pred_prob <- predict(modelo_xgb, newdata = test_hogares_final, type = "prob")
@@ -1830,9 +1828,98 @@ file_tag <- paste0("XGB_", param_str, "_SMOTE_CV5_cut", best_cutoff, "_")
 saveRDS(modelo_xgb, paste0(file_tag, ".rds"))
 write.csv(predict_boosting, paste0(file_tag, ".csv"), row.names = FALSE)
 
+install.packages("DiagrammeR")
+library(DiagrammeR)
+tree_plot <- xgboost::xgb.plot.tree(
+  model = modelo_xgb$finalModel,
+  trees = 1:2,
+  plot_width = 1000,
+  plot_height = 500)
+tree_plot
+```
+
+
+```{r}
+
+# Crear tabla de resumen con las principales métricas del modelo
+resultados_xgb <- tibble::tibble(
+  Métrica = c("Número de muestras", 
+              "Número de predictores", 
+              "Número de clases", 
+              "Pasos de preprocesamiento",
+              "Método de validación", 
+              "Tamaño promedio de muestra en CV",
+              "Mejor combinación de hiperparámetros",
+              "ROC (AUC) promedio",
+              "Sensibilidad promedio",
+              "Especificidad promedio",
+              "Accuracy promedio",
+              "Kappa promedio"),
+  Valor = c("164,960",
+            "14",
+            "2 (NoPobre, Pobre)",
+            "novel, dummy, zv, smote, center, scale",
+            "Validación Cruzada (5 folds)",
+            "≈131,968 observaciones por fold",
+            "nrounds = 300, max_depth = 6, eta = 0.1, gamma = 0, colsample_bytree = 0.8, min_child_weight = 3, subsample = 0.8",
+            "0.808",
+            "0.886",
+            "0.475",
+            "0.804",
+            "0.371")
+)
+
+# Crear tabla con estilo profesional
+tabla_xgb <- resultados_xgb %>%
+  gt() %>%
+  tab_header(
+    title = md("**Resultados del Modelo XGBoost (eXtreme Gradient Boosting)**"),
+    subtitle = "Entrenado con balanceo SMOTE y validación cruzada de 5 particiones"
+  ) %>%
+  cols_label(
+    Métrica = "Métrica del modelo",
+    Valor = "Valor estimado"
+  ) %>%
+  fmt_number(
+    columns = Valor,
+    decimals = 3,
+    rows = 8:12
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold", color = "white"),
+    locations = cells_title(groups = "title")
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "gray30"),
+    locations = cells_title(groups = "title")
+  ) %>%
+  opt_table_font(font = list(google_font("Roboto"))) %>%
+  tab_options(
+    table.font.size = px(13),
+    table.width = pct(100)
+  )
+
+# Mostrar tabla
+tabla_xgb
+
+# --- Exportar tabla a HTML, PDF y PNG ---
+dir.create("Tablas y Graficos", showWarnings = FALSE)
+
+# HTML
+gtsave(tabla_xgb, "Tablas y Graficos/13.Resultados_Modelo_BOOSTING.html")
+
+# PDF
+webshot2::webshot(
+  "Tablas y Graficos/13.Resultados_Modelo_BOOSTING.html",
+  "Tablas y Graficos/13.Resultados_Modelo_BOOSTING.pdf"
+)
+
+# PNG
+gtsave(tabla_xgb, "Tablas y Graficos/13.Resultados_Modelo_BOOSTING.png")
 
 
 ```
+
 
 # Boosting ensamblado con CART
 
