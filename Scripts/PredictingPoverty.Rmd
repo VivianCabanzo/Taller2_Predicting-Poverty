@@ -1475,7 +1475,66 @@ ggsave("Tablas y Graficos/13.grafico_Pobre.png", plot = graf_pobre, width = 7, h
 print(graf_pobre)
 
 ```
+Estadisticas descriptivas de las variables Edad y Numero de personas por hogar.
+```{r}
+# Calcular medias
+media_edad <- mean(train_hogares_final$Edad, na.rm = TRUE)
+media_nper <- mean(train_hogares_final$Nper, na.rm = TRUE)
 
+# Histograma de Edad con línea de media
+g1 <- ggplot(train_hogares_final, aes(x = Edad)) +
+  geom_histogram(fill = "#fff000", color = "lightyellow4", bins = 20) +
+  geom_vline(aes(xintercept = media_edad), color = "red", linetype = "dashed", linewidth = 0.8) +
+  annotate("text", x = media_edad + 5, y = 7000, 
+           label = paste("Media =", round(media_edad, 1)), 
+           color = "red", hjust = 0, size = 3) +
+  labs(title = "Distribución edad jefe hogar en Train",
+       x = "Edad (años)", y = "Frecuencia") +
+  theme_minimal(base_size = 10) +
+  theme(plot.title = element_text(size = 10, hjust = 0.5),
+        axis.text = element_text(size = 8))
+
+# Histograma de Nper con línea de media
+g2 <- ggplot(train_hogares_final, aes(x = Nper)) +
+  geom_histogram(fill = "#fff000", color = "lightyellow4", bins = 15) +
+  geom_vline(aes(xintercept = media_nper), color = "red", linetype = "dashed", linewidth = 0.8) +
+  annotate("text", x = media_nper + 2, y = 30000, 
+           label = paste("Media =", round(media_nper, 2)), 
+           color = "red", hjust = 0, size = 3) +
+  labs(title = "Distribución No. personas hogar en Train",
+       x = "Número de personas", y = "Frecuencia") +
+  theme_minimal(base_size = 10) +
+  theme(plot.title = element_text(size = 10, hjust = 0.5),
+        axis.text = element_text(size = 8))
+
+# Boxplot de Edad
+g3 <- ggplot(test_hogares_final, aes(y = Edad)) +
+  geom_boxplot(fill = "#fff000", color = "gray40") +
+  labs(title = "Boxplot edad jefe de hogar en Test", y = "Edad (años)") +
+  theme_minimal(base_size = 10) +
+  theme(plot.title = element_text(size = 10, hjust = 0.5),
+        axis.text = element_text(size = 8))
+
+# Boxplot de Nper
+g4 <- ggplot(test_hogares_final, aes(y = Nper)) +
+  geom_boxplot(fill = "#fff000", color = "gray40") +
+  labs(title = "Boxplot No. personas por hogar en Test", y = "Número de personas") +
+  theme_minimal(base_size = 10) +
+  theme(plot.title = element_text(size = 10, hjust = 0.5),
+        axis.text = element_text(size = 8))
+
+# Combinar los cuatro gráficos (2x2)
+figura_final <- grid.arrange(g1, g2, g3, g4, ncol = 2)
+
+# Guardar en PDF (más compacto)
+ggsave("Tablas y Graficos/14.graficos_edad_nper_media.pdf",
+       figura_final, width = 8, height = 6)
+
+# Guardar en PNG (misma proporción)
+ggsave("Tablas y Graficos/14.graficos_edad_nper_media.png",
+       figura_final, width = 8, height = 6, dpi = 300)
+
+```
 
 
 
