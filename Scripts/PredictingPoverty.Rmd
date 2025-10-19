@@ -123,6 +123,64 @@ cat("test_hogares:", nrow(test_hogares), "filas y", ncol(test_hogares), "columna
 cat("test_personas:", nrow(test_personas), "filas y", ncol(test_personas), "columnas.\n")
 
 ```
+```{r}
+# Tabla automática: Dimensiones de las bases de datos
+
+# Crear tabla con las dimensiones reales de los dataframes cargados
+tabla_dimensiones <- tibble(
+  `Base de datos` = c("train_hogares", "test_hogares", "train_personas", "test_personas"),
+  `No. de Observaciones` = c(
+    nrow(train_hogares),
+    nrow(test_hogares),
+    nrow(train_personas),
+    nrow(test_personas)
+  ),
+  `No. de variables` = c(
+    ncol(train_hogares),
+    ncol(test_hogares),
+    ncol(train_personas),
+    ncol(test_personas)
+  )
+) %>%
+  mutate(`No. de Observaciones` = format(`No. de Observaciones`, big.mark = ","))
+
+# Crear tabla en formato gt
+tabla_gt_dim <- tabla_dimensiones %>%
+  gt() %>%
+  tab_header(
+    title = md("**Dimensiones de las Bases de Datos de Entrenamiento y Prueba**")
+  ) %>%
+  cols_align(
+    align = "center",
+    columns = everything()
+  ) %>%
+  tab_options(
+    table.font.size = 12,
+    heading.title.font.size = 13,
+    heading.align = "center",
+    table.width = pct(70),
+    data_row.padding = px(3)
+  )
+
+# Crear carpeta si no existe
+dir.create("Tablas y Graficos", showWarnings = FALSE)
+
+# Guardar tabla base en HTML (para conversión)
+gtsave(tabla_gt_dim, "Tablas y Graficos/01.Dimensiones_Bases.html")
+
+# Exportar PDF
+webshot2::webshot(
+  "Tablas y Graficos/01.Dimensiones_Bases.html",
+  "Tablas y Graficos/01.Dimensiones_Bases.pdf"
+)
+
+# Exportar PNG
+gtsave(tabla_gt_dim, "Tablas y Graficos/01.Dimensiones_Bases.png")
+
+# Mostrar en pantalla
+tabla_gt_dim
+
+```
 
 ### - Exploración de bases de datos
 
@@ -180,6 +238,7 @@ gtsave(comp_bd_hogares, "Tablas y Graficos/1.Comparacion_bases_hogares.png")
 comp_bd_hogares
 
 ```
+
 
 La Tabla que precede presenta un resumen comparativo de las variables disponibles en la muestra de entrenamiento y de prueba a nivel de hogares, se observa que ambas bases comparten un total de 16 variables, entre ellas el identificador del hogar (id), atributo fundamental para la creacion de nuevas variables, así como variables socioeconómicas y demográficas.
 
@@ -361,19 +420,34 @@ diccionario_vars <- diccionario_vars %>%
     )
   )
 
-# Crear tabla con gt
+# Crear tabla con gt con mejor tamaño de letra y formato visual
 diccionario_vars <- diccionario_vars %>%
   gt() %>%
   tab_header(
-    title = "Diccionario de Variables: train_hogares2"
+    title = md("**Diccionario de Variables: train_hogares**")
   ) %>%
   cols_label(
     Variable = "Variable",
     Descripcion = "Descripción"
+  ) %>%
+  cols_align(
+    align = "left",
+    columns = everything()
+  ) %>%
+  tab_options(
+    table.font.size = 13,            # Aumenta el tamaño de la fuente
+    heading.title.font.size = 15,    # Título más grande
+    heading.align = "center",        # Centra el título
+    data_row.padding = px(4),        # Espaciado más cómodo
+    table.width = pct(60),           # Hace la tabla más ancha
+    row.striping.include_table_body = TRUE,
+    row.striping.background_color = "#f9f9f9"  # Fondo alternado sutil
   )
 
-# Exportar en los tres formatos dentro de la carpeta
+# Crear carpeta si no existe
+dir.create("Tablas y Graficos", showWarnings = FALSE)
 
+# Exportar en los tres formatos
 # HTML
 gtsave(diccionario_vars, "Tablas y Graficos/3.Diccionario_train_hogares2.html")
 
@@ -397,6 +471,8 @@ Es necesario resaltar que, si bien las variables que contiene ingresos en la bas
 A contiuación, se presentan las variables contenidas en el dataset de entrenamiento de Hogares y se exploran los valores faltantes.
 
 ```{r}
+# Comparación de % de valores faltantes en Train vs Test (hogares)
+
 # Calcular % de faltantes en TRAIN hogares
 faltantes_train_hog <- train_hogares2 %>%
   summarise(across(everything(), ~mean(is.na(.)) * 100)) %>%
@@ -412,37 +488,59 @@ faltantes_test_hog <- test_hogares2 %>%
 # Unir ambas bases
 faltantes_comp_hog <- bind_rows(faltantes_train_hog, faltantes_test_hog)
 
-# Reordenar factores id, Clase, Dominio y Depto 
-orden_vars <- c(setdiff(unique(faltantes_comp_hog$Variable), 
-                        c("Depto", "Dominio","Clase", "id")),
-                      "Depto", "Dominio","Clase", "id")
+# Reordenar factores (id, Clase, Dominio, Depto al final)
+orden_vars <- c(
+  setdiff(unique(faltantes_comp_hog$Variable), c("Depto", "Dominio", "Clase", "id")),
+  "Depto", "Dominio", "Clase", "id"
+)
 
 faltantes_comp_hog <- faltantes_comp_hog %>%
   mutate(Variable = factor(Variable, levels = orden_vars))
 
-# Gráfico comparativo
-grafico_faltantes <- ggplot(faltantes_comp_hog, aes(x = Variable, 
-                                                y = Porcentaje_NA, fill = Base)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  geom_text(aes(label = paste0(round(Porcentaje_NA, 2), "%")), 
-            position = position_dodge(width = 0.9), 
-            vjust = -0.3, size = 3) +
+# Gráfico comparativo con leyenda inferior
+grafico_faltantes <- ggplot(faltantes_comp_hog, aes(x = Variable, y = Porcentaje_NA, fill = Base)) +
+  geom_bar(stat = "identity", position = "dodge", color = "gray30") +
+  geom_text(
+    aes(label = paste0(round(Porcentaje_NA, 2), "%")),
+    position = position_dodge(width = 0.9),
+    vjust = -0.3, size = 3
+  ) +
   coord_flip() +
-  labs(title = "Comparación de % de valores faltantes por variable\nTrain vs Test (hogares)",
-       x = "Variable", y = "% de valores faltantes") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  scale_fill_manual(values = c("Entrenamiento" = "lightyellow4",
-                               "Prueba"        = "#FFFF00")) 
+  labs(
+    title = "Comparación de % de valores faltantes por variable\nTrain vs Test (hogares)",
+    x = "Variable",
+    y = "% de valores faltantes",
+    fill = "Base de datos"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "bottom",              # 🔹 Mueve la leyenda abajo
+    legend.title = element_text(size = 11),
+    legend.text = element_text(size = 10),
+    axis.text.y = element_text(size = 9),
+    axis.text.x = element_text(size = 9),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_blank()
+  ) +
+  scale_fill_manual(
+    values = c("Entrenamiento" = "lightyellow4", "Prueba" = "#FFFF00")
+  )
 
-# Exportar gráfico a PDF
+# ------------------------------------------------------------
+# Exportar gráfico
+# ------------------------------------------------------------
+
+dir.create("Tablas y Graficos", showWarnings = FALSE)
+
+# PDF
 ggsave(
   filename = "Tablas y Graficos/4.Faltantes_Train_Hogares.pdf",
   plot = grafico_faltantes,
   width = 10, height = 6
 )
 
-# Exportar gráfico a PNG
+# PNG
 ggsave(
   filename = "Tablas y Graficos/4.Faltantes_Train_Hogares.png",
   plot = grafico_faltantes,
@@ -495,7 +593,7 @@ comp_bd_personas <- tibble(
 comp_bd_personas <- comp_bd_personas %>%
   gt() %>%
   tab_header(
-    title = "Resumen de Variables entre la muestra de entrenamiento y de prueba en Hogares"
+    title = "Resumen de Variables entre la muestra de entrenamiento y de prueba en Personas"
   ) %>%
   cols_label(
     Categoria = "Categoría",
@@ -522,6 +620,53 @@ comp_bd_personas
 ```
 Del analisis de las variables en común en las bases de Personas, se identifican 63 que se encuentran en la base de entrenamiento y de prueba, se procederá a realizar un analisis de valores faltantes para seleccionar de forma adecuada variables que permitan predecir el estado de pobreza.
 
+```{r}
+# Tabla: Variables en bases de datos a nivel Personas
+
+# Crear los datos
+tabla_personas <- tibble::tibble(
+  Categoría = c(
+    "En ambos datasets",
+    "Solo en train_personas",
+    "Solo en test_personas"
+  ),
+  `No. De Variables` = c(63, 72, 0)
+)
+
+# Crear tabla con formato gt
+tabla_gt_personas <- tabla_personas %>%
+  gt() %>%
+  tab_header(
+    title = md("**Variables en bases de datos a nivel Personas**")
+  ) %>%
+  cols_align(
+    align = "center",
+    columns = everything()
+  ) %>%
+  tab_options(
+    table.font.size = 13,
+    heading.title.font.size = 14,
+    heading.align = "center",
+    data_row.padding = px(4),
+    table.width = pct(30)
+  )
+
+# Exportar HTML (base para PDF)
+gtsave(tabla_gt_personas, "Tablas y Graficos/5.Variables_Personas.html")
+
+# Exportar PDF
+webshot2::webshot(
+  "Tablas y Graficos/5.Variables_Personas.html",
+  "Tablas y Graficos/5.Variables_Personas.pdf"
+)
+
+# Exportar PNG
+gtsave(tabla_gt_personas, "Tablas y Graficos/5.Variables_Personas.png")
+
+# Mostrar en pantalla
+tabla_gt_personas
+
+```
 
 
 ```{r}
@@ -871,7 +1016,6 @@ train_hogares_final <- train_hogares_final %>%
     )
   )
 
-
 # Reescalar Actividad_ocup
 train_hogares_final <- train_hogares_final %>%
   mutate(
@@ -995,7 +1139,6 @@ gtsave(tabla_faltantes_final, "Tablas y Graficos/9.Faltantes_train_hogares_final
 tabla_faltantes_final
 
 ```
-
 ### - Base de Prueba Final
 
 La base de datos de prueba definitiva para las predicciones de pobreza a nivel de Hogares es:
@@ -1321,19 +1464,68 @@ dicc_final
 
 ```
 
+```{r}
+# Tabla: Dimensiones de las bases de datos finales a nivel de hogares
+# Crear tabla automáticamente desde las bases reales
+tabla_dim_final <- tibble(
+  `Conjunto de datos` = c("train_hogares_final", "test_hogares_final"),
+  `No. de Observaciones` = c(nrow(train_hogares_final), nrow(test_hogares_final)),
+  `No. de variables` = c(ncol(train_hogares_final), ncol(test_hogares_final))
+) %>%
+  mutate(`No. de Observaciones` = format(`No. de Observaciones`, big.mark = ","))
+
+# Crear tabla gt con formato elegante
+tabla_gt_final <- tabla_dim_final %>%
+  gt() %>%
+  tab_header(
+    title = md("**Dimensiones de las bases de datos finales a nivel de hogares**")
+  ) %>%
+  cols_align(align = "center", columns = everything()) %>%
+  tab_options(
+    table.font.size = 13,
+    heading.title.font.size = 14,
+    heading.align = "center",
+    table.width = pct(50),
+    data_row.padding = px(4)
+  )
+
+# Crear carpeta si no existe
+dir.create("Tablas y Graficos", showWarnings = FALSE)
+
+# Exportar HTML
+gtsave(tabla_gt_final, "Tablas y Graficos/02.Dimensiones_Hogares_Final.html")
+
+# Exportar PDF
+webshot2::webshot(
+  "Tablas y Graficos/02.Dimensiones_Hogares_Final.html",
+  "Tablas y Graficos/02.Dimensiones_Hogares_Final.pdf"
+)
+
+# Exportar PNG
+gtsave(tabla_gt_final, "Tablas y Graficos/02.Dimensiones_Hogares_Final.png")
+
+# Mostrar en pantalla
+tabla_gt_final
+
+```
+
+
+
 ### 2.2. Estadísticas descriptivas
 Tabla de estadisticas descriptivas para las dos bases de hogares:
    
 ```{r}
-# Función para obtener estadísticas descriptivas
+# Estadísticas descriptivas para variables numéricas
+
+# Función para obtener estadísticas descriptivas (solo numéricas)
 obtener_estadisticas <- function(df, nombre_base) {
   
-  # Excluir variables no relevantes
-  datos <- df %>% select(-id, -Dominio)
+  # Excluir variables no relevantes o categóricas
+  datos <- df %>%
+    select(where(is.numeric))  # 🔹 Mantiene solo variables numéricas
   
-  # Variables numéricas
+  # Calcular estadísticas básicas
   num_stats <- datos %>%
-    select(where(is.numeric)) %>%
     summarise(across(
       everything(),
       list(
@@ -1347,47 +1539,29 @@ obtener_estadisticas <- function(df, nombre_base) {
         NAs = ~sum(is.na(.x))
       ),
       .names = "{.col}.{.fn}"
-    ))
-  
-  # Reorganizar en formato largo
-  num_stats_long <- num_stats %>%
+    )) %>%
     pivot_longer(
       cols = everything(),
       names_to = c("Variable", ".value"),
       names_sep = "\\."
-    )
-  
-  # Variables categóricas
-  cat_vars <- datos %>%
-    select(where(~is.character(.x) || is.factor(.x)))
-  
-  if (ncol(cat_vars) > 0) {
-    cat_stats <- data.frame(
-      Variable = names(cat_vars),
-      Unicos = sapply(cat_vars, function(x) length(unique(x))),
-      NAs = sapply(cat_vars, function(x) sum(is.na(x)))
-    )
-  } else {
-    cat_stats <- NULL
-  }
-  
-  # Combinar ambas
-  estadisticas <- bind_rows(num_stats_long, cat_stats) %>%
+    ) %>%
     mutate(Base = nombre_base)
   
-  return(estadisticas)
+  return(num_stats)
 }
 
 # Calcular estadísticas para Train y Test
+
 stats_train <- obtener_estadisticas(train_hogares_final, "Train Hogares Final")
 stats_test  <- obtener_estadisticas(test_hogares_final,  "Test Hogares Final")
 
 # Unir ambas bases en una sola tabla
 estadisticas_hogares <- bind_rows(stats_train, stats_test)
 
-# Crear tabla única con subtítulos por base
+# Crear tabla con formato profesional
+
 tabla_estadisticas <- estadisticas_hogares %>%
-  gt(groupname_col = "Base") %>%   #Agrupa por base (subtítulos)
+  gt(groupname_col = "Base") %>%
   tab_header(
     title = "Estadísticas Descriptivas: Train y Test Hogares Final"
   ) %>%
@@ -1400,8 +1574,7 @@ tabla_estadisticas <- estadisticas_hogares %>%
     Mediana = "Mediana",
     Q3 = "Q3",
     Max = "Máximo",
-    NAs = "N° NAs",
-    Unicos = "N° Únicos"
+    NAs = "N° NAs"
   ) %>%
   fmt_number(
     columns = c(Media, DesvEst, Min, Q1, Mediana, Q3, Max),
@@ -1415,14 +1588,13 @@ tabla_estadisticas <- estadisticas_hogares %>%
     style = cell_fill(color = "gray40"),
     locations = cells_row_groups()
   ) %>%
-  opt_table_font(font = list(google_font("Roboto"))) %>%
   tab_options(
-    row_group.as_column = FALSE,    # subtítulo cada base
     table.font.size = px(13),
     table.width = pct(100)
   )
 
 # Exportar tabla a HTML, PDF y PNG
+
 dir.create("Tablas y Graficos", showWarnings = FALSE)
 
 # HTML
@@ -1497,6 +1669,7 @@ print(graf_pobre)
 
 ```
 Estadisticas descriptivas de las variables Edad y Numero de personas por hogar.
+
 ```{r}
 # Calcular medias
 media_edad <- mean(train_hogares_final$Edad, na.rm = TRUE)
@@ -1556,12 +1729,61 @@ ggsave("Tablas y Graficos/14.graficos_edad_nper_media.png",
        figura_final, width = 8, height = 6, dpi = 300)
 
 ```
-BASES FINALES!!!!
-
 ```{r}
-dim(train_hogares_final)
-dim(test_hogares_final)
+# Distribuciones categóricas en train_hogares_final
+
+# Crear función genérica para gráficos categóricos
+graficar_categoria <- function(data, variable, titulo, color_fill = "#fff000") {
+  
+  data %>%
+    filter(!is.na(.data[[variable]])) %>%
+    count(!!sym(variable)) %>%
+    mutate(
+      Porcentaje = n / sum(n) * 100,
+      Categoria = as.factor(!!sym(variable))
+    ) %>%
+    ggplot(aes(x = reorder(Categoria, -Porcentaje), y = Porcentaje)) +
+    geom_bar(stat = "identity", fill = color_fill, color = "lightyellow4") +
+    geom_text(aes(label = paste0(round(Porcentaje, 1), "%")), 
+              vjust = -0.3, size = 3) +
+    labs(title = titulo, x = NULL, y = "Porcentaje (%)") +
+    theme_minimal(base_size = 10) +
+    theme(
+      plot.title = element_text(size = 10, hjust = 0.5),
+      axis.text.x = element_text(size = 8, angle = 25, hjust = 1),
+      axis.text.y = element_text(size = 8)
+    )
+}
+
+# Generar gráficos individuales
+gc1 <- graficar_categoria(train_hogares_final, "Sexo",
+                         "Distribución por sexo del jefe del hogar (Train)")
+gc2 <- graficar_categoria(train_hogares_final, "Tipo_vivienda",
+                         "Distribución por tipo de vivienda (Train)")
+gc3 <- graficar_categoria(train_hogares_final, "Nivel_educativo",
+                         "Nivel educativo del jefe del hogar (Train)")
+gc4 <- graficar_categoria(train_hogares_final, "Actividad_Ocup",
+                         "Actividad ocupacional del jefe del hogar (Train)")
+
+# Combinar los gráficos (2x2)
+figura_categoricas <- grid.arrange(gc1, gc2, gc3, gc4, ncol = 2)
+
+# Exportar resultados
+
+# PDF
+ggsave("Tablas y Graficos/14.1.graficos_categoricos_train.pdf",
+       figura_categoricas, width = 9, height = 6)
+
+# PNG
+ggsave("Tablas y Graficos/14.1.graficos_categoricos_train.png",
+       figura_categoricas, width = 9, height = 6, dpi = 300)
+
+# Mostrar en pantalla
+figura_categoricas
+
 ```
+
+
 ## 3. Modelos y Resultados
 
 ## ELASTIC NET
