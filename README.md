@@ -64,7 +64,7 @@ Se implementan diferentes algoritmos de aprendizaje supervisado para la predicci
 
 | Integrante | Código |
 |-------------|------|
-| **Vivian Cabanzo Fernández** | | 
+| **Vivian Cabanzo Fernández** | 202513800 | 
 | **Laura Daniela Diaz Torres** | 202425507 |
 | **Cristian Felipe Muñoz Guerrero** | | 
 | **Zenneth Olivero Tapia** | |
