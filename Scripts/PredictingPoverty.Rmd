@@ -173,9 +173,7 @@ La Tabla que precede presenta un resumen comparativo de las variables disponible
 
 Adicionalmente, se identifican 7 variables exclusivas de la base de entrenamiento (Ingtotug, Ingtotugarr, Ingpcug, Pobre, Indigente, Npobres, Nindigentes), las cuales no están presentes en la base de prueba. Por su parte, el conjunto de prueba no presenta variables exclusivas, lo cual se señala explícitamente como "Ninguna variable".
 
-
 A cotinuación se presenta la comparación de variables entre las muestras de entrenamiento y de prueba a nivel de hogares, se examinan de manera sistemática aspectos como el tipo de dato para identificar la consistencia en el tipo de variables en ambas bases de datos.
-
 
 ```{r}
 # Función: obtener tipo de variable para un dataset
@@ -244,7 +242,7 @@ comb_tipo_var_hog
 
 En conjunto, esta tabla complementa el análisis previo y constituye una herramienta fundamental para orientar las decisiones de limpieza, imputación y selección de variables en la construcción del modelo de predicción de pobreza.
 
-Por otra parte, es fundamental que las bases de datos de entrenamiento y de prueba utilicen el mismo conjunto de variables explicativas, esto se debe a que el modelo predictivo aprende una función definida en un espacio de características específico; si en la etapa de predicción se presentan variables distintas a las utilizadas en el entrenamiento, los modelos a plantear carecerían de la información necesaria para generar resultados válidos. 
+Por otra parte, es fundamental que las bases de datos de entrenamiento y de prueba utilicen el mismo conjunto de variables explicativas, esto se debe a que el modelo predictivo aprende una función definida en un espacio de características específico; si en la etapa de predicción se presentan variables distintas a las utilizadas en el entrenamiento, los modelos a plantear carecerían de la información necesaria para generar resultados válidos.
 
 De igual forma, la inclusión de variables adicionales en el entrenamiento que no están presentes en la prueba impide evaluar correctamente la capacidad de predicción de modelos. Es importante resaltar que, la variable objetivo "Pobre" está disponible únicamente en la base de entrenamiento y no en la base de prueba, ya que el propósito principal del analisis es generar predicciones de pobreza a partir de datos conocidos.
 
@@ -254,8 +252,7 @@ $$
 \
 Pobre = I \cdot (Ingreso < \text{Línea de Pobreza})
 \
-$$
-Se asigna el valor de la variable "Pobre" de acuerdo con el resultado de la función que precede, 
+$$ Se asigna el valor de la variable "Pobre" de acuerdo con el resultado de la función que precede,
 
 $$
 \
@@ -268,7 +265,6 @@ I(\text{Función indicadora}) =
 \end{cases}
 \
 $$
-
 
 De acuerdo con la definición anterior, se seleccionan en la base de datos de entrenamiento aquellas variables que se encuentran en la base de prueba y se mantiene la variable objetivo "Pobre", con la cual se entrenarán los diferentes modelos para realizar predicciones en la base de prueba.
 
@@ -288,8 +284,8 @@ cat("Número de variables en train original:", ncol(train_hogares), "\n")
 cat("Número de variables en train depurado:", ncol(train_hogares2), "\n")
 
 ```
-Al realizar la depuración inicial se exploran las variables restantes, con el objetivo de comprenderlas a fondo y definir su relevancia dentro de la prediccion de pobreza de los hogares.
 
+Al realizar la depuración inicial se exploran las variables restantes, con el objetivo de comprenderlas a fondo y definir su relevancia dentro de la prediccion de pobreza de los hogares.
 
 ```{r}
 # Renombrar variables en train_hogares2
@@ -379,7 +375,6 @@ diccionario_vars
 
 ```
 
-
 Es necesario resaltar que, si bien las variables que contiene ingresos en la base de entrenamiento fueron eliminadas, no presenta ninguna implicacion ya que, dentro de la base existe la variable "Pobre", la cual por definición representa que los ingresos de determinados hogares son inferiores a la linea de pobreza.
 
 A contiuación, se presentan las variables contenidas en el dataset de entrenamiento de Hogares y se exploran los valores faltantes.
@@ -443,7 +438,6 @@ print(grafico_faltantes)
 
 ```
 
-
 La gráfica que precede, ofrece una visión más precisa de la calidad de los datos, resaltando aquellas variables con un porcentaje considerable de valores faltantes que podrían comprometer el desempeño de los modelos predictivos. Se evidencia un alto porcentaje de datos faltantes en las mismas variables para las dos bases, a saber, el valor estimado en caso de pagar arriendo en una vivienda, la cuota de amortización por crédito hipotecario y el valor actual del arriendo, por lo que dichas variables podrian omitirse en ambas bases.
 
 Adicionalmente, las demás variables no presentan datos faltantes, sin embargo, "id", "Clase", "Dominio" y "Depto" son atributos de identificacion por lo que no se usarán como posibles predictoras aunque se mantengan en la base.
@@ -453,7 +447,6 @@ Por su parte, los factores de expansión no representan caracteristicas intrinse
 En cuanto a la linea de pobreza y a la linea de indigencia, estas variables no son necesarias puesto que ya existe la variable que clasifica a los hogares pobres de aquellos que no lo son.
 
 Por lo anterior, dentro de lo explorado se mantendrán las variables "Tipo de vivienda" y "Numero de personas en el hogar", en este orden de ideas se debe proceder a explorar las bases de entrenamiento y de prueba en el nivel de Personas para identificar posibles variables que contribuyan a la prediccion adecuada del estado de pobreza.
-
 
 ```{r}
 # Comparar variables entre train y test Personas
@@ -504,9 +497,8 @@ gtsave(comp_bd_personas, "Tablas y Graficos/5.Comparacion_bases_personas.png")
 comp_bd_personas
 
 ```
+
 Del analisis de las variables en común en las bases de Personas, se identifican 63 que se encuentran en la base de entrenamiento y de prueba, se procederá a realizar un analisis de valores faltantes para seleccionar de forma adecuada variables que permitan predecir el estado de pobreza.
-
-
 
 ```{r}
 # Calcular % de faltantes en TRAIN_PERSONAS y TEST_PERSONAS
@@ -579,8 +571,6 @@ print(porc_faltantes_pers)
 
 De acuerdo con la grafica, existen 45 variables con mas del 50% de valores faltantes en las dos bases a nivel de personas, por lo que no es procedente tenerlas en cuenta para el entrenamiento. Por su parte, 18 variables se revisarán a continuación:
 
-
-
 ```{r}
 # Crear tabla detallada de % de faltantes
 # Unir porcentajes de faltantes de train y test lado a lado
@@ -643,6 +633,7 @@ gtsave(tabla_faltantes_pers, "Tablas y Graficos/7.Faltantes_Train_vs_Test_0a30.p
 tabla_faltantes_pers
 
 ```
+
 ```{r}
 # Renombrar variables en ambos datasets (train y test)
 renombrar_personas <- function(df) {
@@ -751,10 +742,10 @@ ggsave(
 print(grafico_faltantes_pers)
 
 ```
+
 ### - Base de Entrenamiento Final
 
-La base de datos de entrenamiento definitiva para las predicciones de pobreza a nivel de hogares es:
-train_hogares_final
+La base de datos de entrenamiento definitiva para las predicciones de pobreza a nivel de hogares es: train_hogares_final
 
 ```{r}
 # Seleccionar variables de hogares
@@ -918,6 +909,7 @@ head(train_hogares_final)
 ```
 
 Revision de datos faltantes en train hogares:
+
 ```{r}
 # Calcular número y porcentaje de faltantes
 faltantes_train_final <- train_hogares_final %>%
@@ -966,8 +958,7 @@ tabla_faltantes_final
 
 ### - Base de Prueba Final
 
-La base de datos de prueba definitiva para las predicciones de pobreza a nivel de Hogares es:
-test_hogares_final
+La base de datos de prueba definitiva para las predicciones de pobreza a nivel de Hogares es: test_hogares_final
 
 ```{r}
 # Seleccionar variables de hogares
@@ -1236,6 +1227,7 @@ cat("TEST  - Actividad_Ocup:", sum(is.na(test_hogares_final$Actividad_Ocup)), "\
 cat("TEST  - Nivel_educativo:", sum(is.na(test_hogares_final$Nivel_educativo)), "\n")
 
 ```
+
 ```{r}
 # Crear diccionario automático desde el dataset
 dicc_final <- tibble(
@@ -1291,8 +1283,9 @@ dicc_final
 ```
 
 ### 2.2. Estadísticas descriptivas
+
 Tabla de estadisticas descriptivas para las dos bases de hogares:
-   
+
 ```{r}
 # Función para obtener estadísticas descriptivas
 obtener_estadisticas <- function(df, nombre_base) {
@@ -1411,8 +1404,6 @@ tabla_estadisticas
 
 ```
 
-
-
 ## 3. Modelos y Resultados
 
 ```{r}
@@ -1420,47 +1411,29 @@ train_hogares_final
 test_hogares_final
 ```
 
-
 # ELASTIC NET
+
 ```{r}
 str(train_hogares_final)
 ```
 
-
 # CARTS
 
-El modelo CART utiliza un árbol de decisión binario para predecir la condición de pobreza de los hogares.
-Divide los datos en grupos cada vez más homogéneos según variables como tipo de vivienda, nivel educativo, número de personas y ocupación del jefe del hogar. Se tomaron los siguientos pasos
+El modelo CART utiliza un árbol de decisión binario para predecir la condición de pobreza de los hogares. Divide los datos en grupos cada vez más homogéneos según variables como tipo de vivienda, nivel educativo, número de personas y ocupación del jefe del hogar. Se tomaron los siguientos pasos
 
-   - Se aseguró la consistencia de los niveles de la variable *Dominio* entre los conjuntos de entrenamiento y prueba.
+-   Se aseguró la consistencia de los niveles de la variable *Dominio* entre los conjuntos de entrenamiento y prueba.
 
- **Preparación de la receta**
-   - Se creó una receta con la función `recipe()` para preprocesar los datos:
-   - Conversión de variables categóricas a dummies (`step_dummy()`).
-   - Balanceo de clases con **SMOTE** (`step_smote()`).
-   - Estandarización de variables numéricas (`step_center()` y `step_scale()`).
+**Preparación de la receta** - Se creó una receta con la función `recipe()` para preprocesar los datos: - Conversión de variables categóricas a dummies (`step_dummy()`). - Balanceo de clases con **SMOTE** (`step_smote()`). - Estandarización de variables numéricas (`step_center()` y `step_scale()`).
 
- **Definición del control de entrenamiento**
-   - Se configuró una validación cruzada (`cv = 5`).
-   - Se incluyó una función de resumen (`fiveStats`) que calcula el **ROC** y otras medidas de desempeño.
+**Definición del control de entrenamiento** - Se configuró una validación cruzada (`cv = 5`). - Se incluyó una función de resumen (`fiveStats`) que calcula el **ROC** y otras medidas de desempeño.
 
-**Entrenamiento del modelo CART**
-   - Se utilizó el método `"rpart"` buscando el hiperparámetros (`cp`) desde 0.001 hasta 0.02.
-   - La métrica de optimización fue el **ROC AUC**.
+**Entrenamiento del modelo CART** - Se utilizó el método `"rpart"` buscando el hiperparámetros (`cp`) desde 0.001 hasta 0.02. - La métrica de optimización fue el **ROC AUC**.
 
-**Evaluación del modelo**
-   - Se estimó el **F1-score** para todos los posibles umbrales de decisión.
-   - Se identificó el umbral óptimo que maximiza el F1.
+**Evaluación del modelo** - Se estimó el **F1-score** para todos los posibles umbrales de decisión. - Se identificó el umbral óptimo que maximiza el F1.
 
-**Poda del árbol y visualización**
-   - Se podó el árbol con el parámetro `cp` óptimo.
-   - Se graficó el árbol podado.
+**Poda del árbol y visualización** - Se podó el árbol con el parámetro `cp` óptimo. - Se graficó el árbol podado.
 
-**Predicción sobre el conjunto de prueba**
-   - Se calcularon probabilidades de pobreza.
-   - Se aplicó el umbral óptimo para clasificar hogares en Pobre y NoPobres
-   - Se exportaron las predicciones a un archivo `.csv` y el modelo a un archivo `.rds`.
-
+**Predicción sobre el conjunto de prueba** - Se calcularon probabilidades de pobreza. - Se aplicó el umbral óptimo para clasificar hogares en Pobre y NoPobres - Se exportaron las predicciones a un archivo `.csv` y el modelo a un archivo `.rds`.
 
 ```{r}
 
@@ -1559,6 +1532,8 @@ dir.create("Tablas y Graficos", showWarnings = FALSE)
 
 arbol_podado <- prp(arbol_prunin, under = TRUE, branch.lty = 2, yesno = 1, faclen = 0, varlen = 15, box.palette = "-RdYlGn", main = "Árbol CART Podado")
 
+arbol_podado
+
 png("Tablas y Graficos/arbol_podado.png", width = 2000, height = 1400, res = 150)
 prp(arbol_prunin, 
     under = TRUE, branch.lty = 2, yesno = 1, faclen = 0, varlen = 15, 
@@ -1588,7 +1563,6 @@ write.csv(Prediccion_cart, "CART_cp_0_005.csv", row.names = FALSE)
 ```
 
 Adicionalmente traemos las mejores métricas del modelo CART para su visualización
-
 
 ```{r}
 
@@ -1668,28 +1642,15 @@ tabla_modelo_cart
 
 En este análisis, se desarrolló un modelo de clasificación basado en XGBoost (Extreme Gradient Boosting) con el objetivo de estimar la probabilidad de que un hogar sea pobre. Este enfoque combina técnicas de preprocesamiento, validación cruzada y optimización de hiperparámetros para obtener un modelo robusto y con buen poder predictivo.
 
- **Preparación de la receta**
-   - Se creó una receta con la función `recipe()` para preprocesar los datos:
-   - Conversión de variables categóricas a dummies (`step_dummy()`).
-   - Balanceo de clases con **SMOTE** (`step_smote()`).
-   - Estandarización de variables numéricas (`step_center()` y `step_scale()`).
+**Preparación de la receta** - Se creó una receta con la función `recipe()` para preprocesar los datos: - Conversión de variables categóricas a dummies (`step_dummy()`). - Balanceo de clases con **SMOTE** (`step_smote()`). - Estandarización de variables numéricas (`step_center()` y `step_scale()`).
 
- **Definición del control de entrenamiento**
-   - Se configuró una validación cruzada (`cv = 5`).
-   - Se incluyó una función de resumen (`fiveStats`) que calcula el **ROC** y otras medidas de desempeño.
+**Definición del control de entrenamiento** - Se configuró una validación cruzada (`cv = 5`). - Se incluyó una función de resumen (`fiveStats`) que calcula el **ROC** y otras medidas de desempeño.
 
-**Creación del grid de hiperparámetros**
-   - Combinación óptima que maximice la métrica ROC, equilibrando el sesgo y la varianza del modelo.
-   
-**Creación del grid de hiperparámetros**
-   - Se entrena el modelo usando XGBoost
-   - Se realiza una paralelización reduce el tiempo de cómputo al evaluar simultáneamente distintas combinaciones del grid.
-   
-**Evaluación del modelo**
-   - Se inspeccionan los resultados del modelo, visualizando cómo varía la métrica ROC en función de los hiperparámetros. 
-   - El modelo con mejor desempeño será aquel que logre la mayor capacidad de discriminación entre hogares pobres y no pobres.
+**Creación del grid de hiperparámetros** - Combinación óptima que maximice la métrica ROC, equilibrando el sesgo y la varianza del modelo.
 
+**Creación del grid de hiperparámetros** - Se entrena el modelo usando XGBoost - Se realiza una paralelización reduce el tiempo de cómputo al evaluar simultáneamente distintas combinaciones del grid.
 
+**Evaluación del modelo** - Se inspeccionan los resultados del modelo, visualizando cómo varía la métrica ROC en función de los hiperparámetros. - El modelo con mejor desempeño será aquel que logre la mayor capacidad de discriminación entre hogares pobres y no pobres.
 
 ```{r}
 
@@ -1710,9 +1671,9 @@ receta_xgb <- recipe(
   step_center(all_predictors()) %>%
   step_scale(all_predictors())
 
-# =========================================
-# 🎛️ Control de entrenamiento
-# =========================================
+
+#️  Control de entrenamiento
+
 ctrl_xgb <- trainControl(
   method = "cv",
   number = 5,
@@ -1760,20 +1721,14 @@ varImp(modelo_xgb)
 
 
 ```
+
 Aquí se evalúan y aplican los resultados del modelo XGBoost previamente entrenado, con el objetivo de identificar el umbral de decisión óptimo que maximiza el desempeño del modelo según la métrica F1-score, y posteriormente generar las predicciones finales sobre el conjunto de prueba.
 
-**Evaluación del modelo con F1-score**
-  - se construyó un objeto de predicción a partir de los resultados de la validación cruzada interna (modelo_xgb$pred).
-  - Evaluación de la calidad del modelo en distintos umbrales de probabilidad (cutoffs) usando la librería ROCR.
+**Evaluación del modelo con F1-score** - se construyó un objeto de predicción a partir de los resultados de la validación cruzada interna (modelo_xgb\$pred). - Evaluación de la calidad del modelo en distintos umbrales de probabilidad (cutoffs) usando la librería ROCR.
 
-**Generación de predicciones sobre el conjunto de prueba**
-  - Con el modelo ajustado, se estimaron las probabilidades de pobreza para cada hogar del conjunto de test.
-  - Aplicando el umbral óptimo, se generó la variable binaria pobre, que toma el valor 1 si la probabilidad de ser pobre es igual o mayor al cutoff, y 0 en caso contrario.
-  
-**Exportación de resultados**
-  - Finalmente, se preparó un archivo de salida con los identificadores (id) y la predicción binaria (pobre).
-  - Para asegurar trazabilidad y facilitar la identificación de los resultados, se incluyó en el nombre del archivo información sobre los hiperparámetros óptimos del modelo y el valor del cutoff.
+**Generación de predicciones sobre el conjunto de prueba** - Con el modelo ajustado, se estimaron las probabilidades de pobreza para cada hogar del conjunto de test. - Aplicando el umbral óptimo, se generó la variable binaria pobre, que toma el valor 1 si la probabilidad de ser pobre es igual o mayor al cutoff, y 0 en caso contrario.
 
+**Exportación de resultados** - Finalmente, se preparó un archivo de salida con los identificadores (id) y la predicción binaria (pobre). - Para asegurar trazabilidad y facilitar la identificación de los resultados, se incluyó en el nombre del archivo información sobre los hiperparámetros óptimos del modelo y el valor del cutoff.
 
 ```{r}
 # Crear objeto con las predicciones del CV interno
@@ -1828,16 +1783,8 @@ file_tag <- paste0("XGB_", param_str, "_SMOTE_CV5_cut", best_cutoff, "_")
 saveRDS(modelo_xgb, paste0(file_tag, ".rds"))
 write.csv(predict_boosting, paste0(file_tag, ".csv"), row.names = FALSE)
 
-install.packages("DiagrammeR")
-library(DiagrammeR)
-tree_plot <- xgboost::xgb.plot.tree(
-  model = modelo_xgb$finalModel,
-  trees = 1:2,
-  plot_width = 1000,
-  plot_height = 500)
-tree_plot
-```
 
+```
 
 ```{r}
 
@@ -1920,13 +1867,26 @@ gtsave(tabla_xgb, "Tablas y Graficos/13.Resultados_Modelo_BOOSTING.png")
 
 ```
 
-
 # Boosting ensamblado con CART
 
+El ensamble XGB + CART combina un modelo de XGBoost y un árbol de decisión CART para predecir la condición de pobreza de los hogares. Los datos se procesan y combinan para aprovechar la potencia de XGBoost y la interpretabilidad de CART.
+
+**Preprocesamiento** - Se agruparon niveles poco frecuentes de las variables *Dominio*, *Nivel_educativo* y *Actividad_Ocup* para reducir la cantidad de variables dummy. - Se eliminaron hogares de Bogotá para evitar sesgo geográfico. - Se crearon variables adicionales no lineales, como `Edad2 = Edad^2`.
+
+**Preparación de la receta** - Se creó una receta con `recipe()` para preprocesar los datos: - Manejo de niveles nuevos con `step_novel()`. - Conversión de variables categóricas a dummies (`step_dummy()`). - Eliminación de variables con varianza cero (`step_zv()`).
+
+**Balanceo de clases** - Se calculó `pos_weight` para equilibrar la proporción de clases minoritarias en XGBoost, mejorando el F1.
+
+**Definición del control de entrenamiento** - Se configuró validación cruzada de 5 folds. - Se guardaron las predicciones finales para optimizar el ensamble. - La métrica principal de optimización fue **ROC AUC**.
+
+**Entrenamiento de modelos** - XGBoost (`xgbTree`) entrenado en paralelo con un grid de hiperparámetros (`nrounds`, `max_depth`, `eta`, `gamma`, `colsample_bytree`, `min_child_weight`, `subsample`) y pesos de clase. - CART (`rpart`) entrenado con validación cruzada de 3 folds y grid de complejidad `cp`.
+
+**Ensamble** - Se combinaron probabilidades de ambos modelos multiplicando por un peso ajustable para XGBoost y 1 menos el peso para CART. - Se recorrió un rango de pesos y se buscó el **cutoff** que maximiza el F1-score en el conjunto de entrenamiento. - Se identificaron el mejor peso, el mejor cutoff y el F1 máximo.
+
+**Predicción sobre el conjunto de prueba** - Se aplicó el ensemble con los pesos y cutoff óptimos. - Se generó la predicción binaria (`pobre`) a partir de las probabilidades combinadas. - Se aseguró que la columna `id` estuviera presente para exportar resultados. - Se guardaron las predicciones en un archivo `.csv` con nombre que refleja el peso y cutoff optimizados.
+
 ```{r}
-# ============================================================
-# 📦 LIBRERÍAS
-# ============================================================
+
 library(caret)
 library(dplyr)
 library(doParallel)
@@ -1937,24 +1897,8 @@ library(themis)
 library(ggplot2)
 library(forcats)
 
-#semilla
-set.seed(1011)
 
 # Preprocesamiento
-
-train_hogares_final %>%
-  mutate(Tipo_vivienda_simplificado = fct_collapse(Tipo_vivienda,
-    Propia = c("propia (pagada o pagando)"),
-    Alquilada = c("arriendo/subarriendo"),
-    NoPropia = c("usufructo", "ocupante sin título", "otra")
-  ))
-
-test_hogares_final %>%
-  mutate(Tipo_vivienda_simplificado = fct_collapse(Tipo_vivienda,
-    Propia = c("propia (pagada o pagando)"),
-    Alquilada = c("arriendo/subarriendo"),
-    NoPropia = c("usufructo", "ocupante sin título", "otra")
-  ))
 
 # Agrupar niveles poco frecuentes para evitar dummies excesivos
 train_hogares_final <- train_hogares_final %>%
@@ -1971,73 +1915,76 @@ test_hogares_final <- test_hogares_final %>%
     Actividad_Ocup = fct_lump(Actividad_Ocup, n = 10)
   )
 
+#Eliminar bogotá
+train_hogares_final <- train_hogares_final %>%
+  filter(Dominio != "BOGOTA")
+
 #  Crear variables adicionales (no lineales e interacciones)
 train_hogares_final <- train_hogares_final %>%
   mutate(
-    Edad2 = Edad^2,
-    log_Nper = log1p(Nper),
-    Edad_x_Nper = Edad * Nper
+    Edad2 = Edad^2
   )
 
 test_hogares_final <- test_hogares_final %>%
   mutate(
     Edad2 = Edad^2,
-    log_Nper = log1p(Nper),
-    Edad_x_Nper = Edad * Nper
   )
 
 
+#semilla
+set.seed(1011)
+
 # Receta
-receta_xgb <- recipe(
+receta_xgb<- recipe(
   Pobre ~ Clase + Dominio + Tipo_vivienda + Nper + Sexo +
-    Edad + Edad2 + log_Nper + Edad_x_Nper +
+    Edad + Edad2 +
     Nivel_educativo + Actividad_Ocup,
   data = train_hogares_final
 ) %>%
-  step_novel(all_nominal_predictors()) %>%
-  step_dummy(all_nominal_predictors()) %>%
-  step_zv(all_predictors())
+  step_novel(all_nominal_predictors()) %>% #manejo de niveles
+  step_dummy(all_nominal_predictors()) %>% #dummys
+  step_zv(all_predictors()) #elimina variables con varianza cerp
 
-cat(" reparando la receta...\n")
-receta_prep <- prep(receta_xgb)
-train_ready <- bake(receta_prep, new_data = train_hogares_final)
-test_ready  <- bake(receta_prep, new_data = test_hogares_final)
-cat(" receta lista.\n")
+receta_prep <- prep(receta_xgb) #entrena la receta
+train_ready <- bake(receta_prep, new_data = train_hogares_final)  #aplicar la receta
+test_ready  <- bake(receta_prep, new_data = test_hogares_final) #aplicar la receta
+
 
 # Balanceo de clases
 pos_weight <- (sum(train_ready$Pobre == "NoPobre") /
                sum(train_ready$Pobre == "Pobre"))
 cat(" scale_pos_weight =", round(pos_weight, 2), "\n")
-
+#calcula cuantas veces más frecuentes son los NoPobres frente a los Pobres
+#Este valor se usa en XGB para penalizar los errores de la clase minoritaria y mejora el F1 score
 
 #  control de entrenamiento
 ctrl_xgb <- trainControl(
-  method = "cv",
-  number = 3,                 # 3 folds
+  method = "cv",  #validación cruzada
+  number = 5,                 # 5 folds
   summaryFunction = twoClassSummary,
   classProbs = TRUE,
   verboseIter = TRUE,
-  savePredictions = "final"
+  savePredictions = "final" #guarda predicciones mejor modelo
 )
 
 
 #  Grid de hiperparamentros
 
 grid_xgb <- expand.grid(
-  nrounds = c(400, 600),
-  max_depth = c(4, 5),
-  eta = c(0.05, 0.08),
-  gamma = c(0, 1),
-  colsample_bytree = 0.8,
-  min_child_weight = 2,
-  subsample = 0.8
+  nrounds = c(600), #arboles
+  max_depth = c(3, 4), #profundidad, controla el sobreajuste
+  eta = c(0.03, 0.05, 0.07), #tasa de aprendizaje
+  gamma = c(1, 2), #penalización
+  colsample_bytree = 0.7,  #fracciones de columnas y filas usadas
+  min_child_weight = c(4, 6), #minimo de muestras en una hoja 
+  subsample = c(0.75, 0.85)
 )
 
 
 #  Paralelización y entrenamiento
 
 cl <- makeCluster(parallel::detectCores() - 1)
-registerDoParallel(cl)
+registerDoParallel(cl) #paralización de la validación cruzada
 
 
 modelo_xgb <- train(
@@ -2046,9 +1993,10 @@ modelo_xgb <- train(
   method = "xgbTree",
   trControl = ctrl_xgb,
   tuneGrid = grid_xgb,
-  metric = "ROC",
-  weights = ifelse(train_ready$Pobre == "Pobre", pos_weight, 1)
+  metric = "ROC", #Optimiza por AUC
+  weights = ifelse(train_ready$Pobre == "Pobre", pos_weight, 1) #usa pesos calculados para balancear clase minoritaria
 )
+
 stopCluster(cl)
 registerDoSEQ()
 
@@ -2060,119 +2008,23 @@ modelo_cart <- train(
   Pobre ~ ., data = train_ready,
   method = "rpart",
   trControl = trainControl(method = "cv", number = 3, classProbs = TRUE),
-  tuneGrid = expand.grid(cp = seq(0.001, 0.01, 0.002)))
+  tuneGrid = expand.grid(cp = seq(0.001, 0.01, 0.002))) #Ayuda a ser mas interpretable 
 
-#  Obtener los nombres de parámetros del bestTune (para filtrar correctamente)
-bestTune_xgb <- modelo_xgb$bestTune
-tune_cols <- names(bestTune_xgb)
-
-#  Filtrar predicciones OOF EXACTAS para el bestTune
-pred_xgb_oof <- modelo_xgb$pred %>%
-  filter(!!!rlang::syms(tune_cols) == bestTune_xgb) 
-if (nrow(pred_xgb_oof) == 0) {
-  pred_xgb_oof <- modelo_xgb$pred
-  for (nm in tune_cols) {
-    pred_xgb_oof <- pred_xgb_oof %>% filter(.data[[nm]] == bestTune_xgb[[nm]])
-  }
-}
-
-# Asegurarnos que modelo_cart tiene OOF preds en el mismo orden/index
-if (!"rowIndex" %in% names(pred_xgb_oof)) {
-  stop("No hay 'rowIndex' en predicciones OOF de XGB. No podemos alinear ensemble OOF.")
-}
-# Obtener OOF preds de CART (filtradas por su bestTune)
-bestTune_cart <- modelo_cart$bestTune
-tune_cols_cart <- names(bestTune_cart)
-
-pred_cart_oof <- modelo_cart$pred
-for (nm in tune_cols_cart) {
-  pred_cart_oof <- pred_cart_oof %>% filter(.data[[nm]] == bestTune_cart[[nm]])
-}
-
-# Alinear por rowIndex (o por obs si no hay rowIndex)
-# Usamos rowIndex para asegurar correspondencia de filas OOF
-oof_ens <- pred_xgb_oof %>%
-  select(rowIndex, obs, xgb_prob = Pobre) %>%
-  left_join(
-    pred_cart_oof %>% select(rowIndex, cart_prob = Pobre),
-    by = "rowIndex"
-  )
-
-# Si cart_prob tiene NA (no hay pred para algunos rowIndex), intentar alinear por obs order
-if (any(is.na(oof_ens$cart_prob))) {
-  warning("Algunos rowIndex no alinearon por rowIndex; intentando alinear por orden dentro de folds.")
-  # Fallback: simple join por rowIndex falló; intentar por positions (solo si longitudes coinciden)
-  if (nrow(pred_xgb_oof) == nrow(pred_cart_oof)) {
-    oof_ens <- tibble(
-      rowIndex = pred_xgb_oof$rowIndex,
-      obs = pred_xgb_oof$obs,
-      xgb_prob = pred_xgb_oof$Pobre,
-      cart_prob = pred_cart_oof$Pobre
-    )
-  } else {
-    stop("No fue posible alinear OOF de XGB y CART. Revisa modelos y predicciones OOF.")
-  }
-}
-
-# 4) Construir probabilidad del ensemble (pesos iniciales 0.7/0.3)
-oof_ens <- oof_ens %>%
-  mutate(ens_prob = 0.7 * xgb_prob + 0.3 * cart_prob)
-
-# 5) Calcular cutoff que maximiza F1 sobre ens_prob vs obs
-pred_obj <- ROCR::prediction(oof_ens$ens_prob, oof_ens$obs)
-perf_f1 <- ROCR::performance(pred_obj, "f")
-best_idx <- which.max(slot(perf_f1, "y.values")[[1]])
-best_cutoff_ens <- slot(perf_f1, "x.values")[[1]][best_idx]
-best_f1_ens <- slot(perf_f1, "y.values")[[1]][best_idx]
-
-cat("Cutoff óptimo (ensemble OOF):", round(best_cutoff_ens, 3), "\n")
-cat("F1 máximo (OOF ensemble):", round(best_f1_ens, 3), "\n")
-
-# 6) (Opcional) Tuneo rápido del peso del ensemble usando OOF (sin reentrenar)
-weights <- seq(0, 1, by = 0.1)
-res_w <- sapply(weights, function(w) {
-  p <- w * oof_ens$xgb_prob + (1 - w) * oof_ens$cart_prob
-  pr <- ROCR::prediction(p, oof_ens$obs)
-  pperf <- ROCR::performance(pr, "f")
-  max(unlist(slot(pperf, "y.values")))
-})
-best_w <- weights[which.max(res_w)]
-cat("Mejor peso XGB (OOF):", best_w, " -> F1:", round(max(res_w), 3), "\n")
-# Podemos usar best_w en lugar de 0.7 si mejora.
-
-# 7) Aplicar en test: generar probabilidades del ensemble y aplicar cutoff_ens
-# Asegurar test_ready tiene prob_XGB y prob_CART, si no, calcular
-if (!"Prob_Pobre_XGB" %in% names(test_ready)) {
-  test_ready$Prob_Pobre_XGB  <- predict(modelo_xgb, newdata = test_ready, type = "prob")[, "Pobre"]
-}
-if (!"Prob_Pobre_CART" %in% names(test_ready)) {
-  test_ready$Prob_Pobre_CART <- predict(modelo_cart, newdata = test_ready, type = "prob")[, "Pobre"]
-}
-
-# Usar best_w encontrado
-test_ready$Prob_Pobre_Ens <- best_w * test_ready$Prob_Pobre_XGB + (1 - best_w) * test_ready$Prob_Pobre_CART
-test_ready$pobre <- ifelse(test_ready$Prob_Pobre_Ens >= best_cutoff_ens, 1, 0)
-
-
-```
-
-```{r}
-cat(" Recalculando cutoff óptimo usando TRAIN completo...\n")
-
-# --- Predicciones del ensemble en el TRAIN ---
-pred_xgb_train  <- predict(modelo_xgb, newdata = train_ready, type = "prob")[, "Pobre"]
-pred_cart_train <- predict(modelo_cart, newdata = train_ready, type = "prob")[, "Pobre"]
+# Predicciones del ensemble en el TRAIN 
+pred_xgb_train  <- predict(modelo_xgb, newdata = train_ready, type = "prob")[, "Pobre"] #predicción xgb
+pred_cart_train <- predict(modelo_cart, newdata = train_ready, type = "prob")[, "Pobre"] #predicció cart
 
 # Ajuste automático del peso del ensemble
-pesos <- seq(0.5, 0.9, by = 0.1)
+pesos <- seq(0.5, 0.9, by = 0.1) #en xgb se prueban compinaciones entre 0.5 y 0.9 y cart es 1 - peso
 mejor_f1 <- 0
 mejor_peso <- 0
 mejor_cutoff <- 0
 
+# Loop para buscar pesos y cutoff que maximiza f1
 for (w in pesos) {
-  prob_ens <- w * pred_xgb_train + (1 - w) * pred_cart_train
+  prob_ens <- w * pred_xgb_train + (1 - w) * pred_cart_train #Combina las probabilidades de ambos modelos
   pred_obj <- prediction(prob_ens, train_ready$Pobre)
-  perf_f1 <- performance(pred_obj, "f")
+  perf_f1 <- performance(pred_obj, "f") #F1 de los umbrales
   idx <- which.max(slot(perf_f1, "y.values")[[1]])
   f1_max <- slot(perf_f1, "y.values")[[1]][idx]
   cutoff <- slot(perf_f1, "x.values")[[1]][idx]
@@ -2181,44 +2033,37 @@ for (w in pesos) {
     mejor_cutoff <- cutoff
     mejor_peso <- w
   }
-}
+} #guarda el mejor f1 y su respestivo cutoff
+
+#Resultados
 
 cat(" Mejor peso XGB:", round(mejor_peso, 2), "\n")
-cat(" Mejor cutoff (train ensemble):", round(mejor_cutoff, 3), "\n")
+cat(" Mejor cutoff  ", round(mejor_cutoff, 3), "\n")
 cat(" F1 máximo estimado:", round(mejor_f1, 3), "\n")
 
-#  Aplicar ensemble al TEST
+
+#  Aplicar ensemble en TEST
+
 pred_xgb_test  <- predict(modelo_xgb, newdata = test_ready, type = "prob")[, "Pobre"]
 pred_cart_test <- predict(modelo_cart, newdata = test_ready, type = "prob")[, "Pobre"]
 
-test_predic$Prob_Pobre_Ens <- mejor_peso * pred_xgb_test + (1 - mejor_peso) * pred_cart_test
-test_predic$pobre <- ifelse(test_predic$Prob_Pobre_Ens >= mejor_cutoff, 1, 0)
+
+#  Aplicar ensemble en TEST
+test_ready$Prob_Pobre_Ens <- mejor_peso * pred_xgb_test + (1 - mejor_peso) * pred_cart_test #Aplicar pesos y umbral
+test_ready$pobre <- ifelse(test_ready$Prob_Pobre_Ens >= mejor_cutoff, 1, 0) #Genera la predicción binaria
 
 # Recuperar ID
-if (!"id" %in% names(test_ready)) test_predic$id <- test_hogares_final$id
+if (!"id" %in% names(test_ready)) test_ready$id <- test_hogares_final$id
 
-# --- Guardar CSV Kaggle ---
-timestamp <- format(Sys.time(), "%Y%m%d_%H%M")
-csv_name <- paste0("XGB_CART_ENSEMBLE_F1opt_", 
-                   "w", mejor_peso, "_cut", round(mejor_cutoff,3), "_", timestamp, ".csv")
+#  Guardar CSV  
 
-write.csv(test_predict %>% select(id, pobre), csv_name, row.names = FALSE)
-
-
-```
-
-
-
-```{r}
-# Crear el dataframe de submission
-submission_xgb <- data.frame(
-  id = test_ready$id,
-  pobre = test_ready$pobre
+csv_name <- paste0(
+  "XGB_CART_ENSEMBLE_F1opt_w", mejor_peso,
+  "_cut", round(mejor_cutoff, 3), "_", ".csv"
 )
 
-# Ver distribución de predicciones
-table(submission_xgb$pobre)
-prop.table(table(submission_xgb$pobre))
+write.csv(test_ready %>% select(id, pobre), csv_name, row.names = FALSE)
+
 ```
 
 ### 3.1. Seleccion de modelos y entrenamiento
@@ -2230,19 +2075,3 @@ prop.table(table(submission_xgb$pobre))
 ### 3.4. Importancia de las caracteristicas
 
 ## 4. Conclusiones
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
