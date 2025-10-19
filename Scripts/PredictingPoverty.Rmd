@@ -68,7 +68,9 @@ pacman::p_load(
   recipes,       # Preprocesamiento de datos (pipeline)
   themis,        # Balancear clases (SMOTE, up/downsampling)
   ROCR,          # Curvas ROC, AUC y métricas de modelos
-  xgboost        # Algoritmo de Gradient Boosting optimizado
+  xgboost,       # Algoritmo de Gradient Boosting optimizado
+  doParallel,
+  yardstick
 )
 
 # Verificar paquetes cargados
@@ -2000,6 +2002,7 @@ cat("F1 óptimo:", round(best_F1_EN2, 3), "\n")
 
 ```{r}
 # Gráfica Umbral optimo
+
 # Crear un formato más corto para lambda
 lambda_corto <- signif(modelo_EN1$bestTune$lambda, 3)  # 3 cifras significativas
 
@@ -2043,6 +2046,7 @@ El modelo Elastic Net 1 fue aplicado sobre la base de prueba utilizando el umbra
 
 ```{r}
 # PREDICCIONES EN2
+
 # Probabilidades sobre TEST
 pred_prob_EN2 <- predict(modelo_EN1, newdata = X_test_EN1, type = "prob")[, "Pobre"]
 
