@@ -1822,12 +1822,63 @@ tabla_cm_EN1_gt
 ```
 
 ```{r}
-# Evaluar modelo Elastic Net 1 y exportar resultados
+# FUNCIÓN PARA EVALUAR UN MODELO ELASTIC NET CON VALIDACIÓN CRUZADA
+evaluar_modelo_cv <- function(modelo, nombre_modelo, umbral = 0.5) {
+  
+  # Filtrar predicciones del mejor conjunto de hiperparámetros
+  pred_cv <- modelo$pred %>%
+    filter(alpha == modelo$bestTune$alpha,
+           lambda == modelo$bestTune$lambda)
+  
+  # Verificar que existen probabilidades de la clase "Pobre"
+  if (!"Pobre" %in% colnames(pred_cv)) {
+    stop("No se encontró la columna 'Pobre' en modelo$pred. 
+         Verifica que classProbs=TRUE en trainControl.")
+  }
+  
+  # Calcular predicciones binarias según el umbral
+  pred_cv <- pred_cv %>%
+    mutate(pred_bin = ifelse(Pobre >= umbral, "Pobre", "NoPobre"))
+  
+  # Matriz de confusión
+  cm <- confusionMatrix(
+    factor(pred_cv$pred_bin, levels = c("NoPobre", "Pobre")),
+    factor(pred_cv$obs, levels = c("NoPobre", "Pobre")),
+    positive = "Pobre"
+  )
+  
+  # Calcular métricas
+  precision <- cm$byClass["Pos Pred Value"]
+  recall    <- cm$byClass["Sensitivity"]
+  F1        <- 2 * ((precision * recall) / (precision + recall))
+  
+  # Mostrar resumen rápido en consola
+  cat("\nEvaluación CV —", nombre_modelo, "\n")
+  cat("  Alpha:", modelo$bestTune$alpha, 
+      "| Lambda:", modelo$bestTune$lambda, "\n")
+  cat("  Umbral:", umbral, "\n")
+  cat("  Precision:", round(precision, 3),
+      "Recall:", round(recall, 3),
+      "F1:", round(F1, 3), "\n")
+  
+  # Retornar un tibble con resultados
+  tibble(
+    Modelo = nombre_modelo,
+    Alpha = modelo$bestTune$alpha,
+    Lambda = modelo$bestTune$lambda,
+    Umbral = umbral,
+    Precision = round(precision, 3),
+    Recall = round(recall, 3),
+    F1 = round(F1, 3)
+  )
+}
 
-# Evaluar el modelo (usando función existente)
+# -------------------------------------------------------------
+# EVALUAR EL MODELO ELASTIC NET 1 Y EXPORTAR RESULTADOS
+# -------------------------------------------------------------
 res_EN1 <- evaluar_modelo_cv(modelo_EN1, "Elastic Net EN1")
 
-# Actualizar o crear el resumen de modelos
+# Crear o actualizar el resumen de modelos
 resumen_modelos <- if (exists("resumen_modelos")) {
   resumen_modelos %>%
     filter(Modelo != res_EN1$Modelo[1]) %>%
@@ -1839,7 +1890,7 @@ resumen_modelos <- if (exists("resumen_modelos")) {
 # Mostrar resumen actualizado
 print(resumen_modelos)
 
-# Exportar resultados a HTML, PDF y PNG
+# EXPORTAR RESULTADOS A HTML, PDF Y PNG
 tabla_resumen <- resumen_modelos %>%
   gt() %>%
   tab_header(
@@ -1877,7 +1928,6 @@ gtsave(tabla_resumen, "Tablas y Graficos/17.Resumen_Modelo_EN1.png")
 
 # Mostrar tabla en pantalla
 tabla_resumen
-
 ```
 
 ```{r}
@@ -1949,9 +1999,7 @@ cat("F1 óptimo:", round(best_F1_EN2, 3), "\n")
 ```
 
 ```{r}
-
 # Gráfica Umbral optimo
-
 # Crear un formato más corto para lambda
 lambda_corto <- signif(modelo_EN1$bestTune$lambda, 3)  # 3 cifras significativas
 
@@ -1995,7 +2043,6 @@ El modelo Elastic Net 1 fue aplicado sobre la base de prueba utilizando el umbra
 
 ```{r}
 # PREDICCIONES EN2
-
 # Probabilidades sobre TEST
 pred_prob_EN2 <- predict(modelo_EN1, newdata = X_test_EN1, type = "prob")[, "Pobre"]
 
