@@ -1,6 +1,6 @@
 ---
 title: "Problem Set 2 - BDML"
-author: "Cristian Muñoz - Vivian Cabanzo - Zenneth Olivero - Laura Diaz"
+author: "Cristian Muñoz - Vivian Cabanzo - Zeneth Olivero - Laura Diaz"
 date: "2025-09-30"
 output: html_document
 ---
