@@ -2354,6 +2354,341 @@ gtsave(tabla_modelos_2, "Tablas y Graficos/20.Especificaciones_modelos.png")
 tabla_modelos_2
 ```
 
+```{r}
+library(gt)
+library(webshot2)
+
+```
+
+```{r}
+### --- 3.2 Hiperparámetros (modelo Logit penalizado) ---
+
+
+# Recipe correcto (usa train_fac o train_tr, ambas con poor=factor)
+logit_spec <- logistic_reg( penalty = tune(), mixture = tune()) %>%
+  set_engine("glmnet") %>%
+  set_mode("classification")
+
+
+# Se emplea validación cruzada estratificada (5-fold) para ajustar
+# los hiperparámetros lambda (penalty) y alpha (mixture) en Ridge
+# y Lasso. Se selecciona el modelo que maximiza el AUC.
+
+ridge_grid <- grid_regular(penalty(range = c(-6, 0)), levels = 20)
+lasso_grid <- grid_regular(penalty(range = c(-6, 0)), levels = 20)
+
+ridge_res <- tune_grid(
+  ridge_wf, resamples = folds, grid = ridge_grid,
+  metrics = metric_set(roc_auc, f_meas),
+  control = control_grid(save_pred = TRUE, verbose = TRUE)
+)
+
+lasso_res <- tune_grid(
+  lasso_wf, resamples = folds, grid = lasso_grid,
+  metrics = metric_set(roc_auc, f_meas),
+  control = control_grid(save_pred = TRUE, verbose = TRUE)
+)
+
+best_ridge <- select_best(ridge_res, metric = "roc_auc")
+best_lasso <- select_best(lasso_res, metric = "roc_auc")
+
+final_ridge_wf <- finalize_workflow(ridge_wf, best_ridge) %>% fit(train_tr)
+final_lasso_wf <- finalize_workflow(lasso_wf, best_lasso) %>% fit(train_tr)
+
+
+```
+
+```{r}
+### --- Modelo LPM (para comparar con Logit) ---
+
+# Split específico para la base numérica
+split_num <- initial_split(train_num, prop = 0.8, strata = poor)
+train_tr_num <- training(split_num)
+train_val_num <- testing(split_num)
+
+# Recipe para LPM (usa base numérica)
+lm_spec_ <- linear_reg() %>% 
+  set_engine("lm") %>%
+  set_mode("regression")
+
+
+lm_recipe_ <- recipe(poor ~ Clase + Dominio + Tipo_vivienda + Nper + Sexo + Edad + Nivel_educativo + Actividad_Ocup, data = train_num) %>%
+  step_zv(all_predictors()) %>%                    # elimina variables sin variación
+  step_impute_median(all_numeric_predictors()) %>% # imputar medianas
+  step_impute_mode(all_nominal_predictors()) %>%   # imputar modas
+  step_dummy(all_nominal_predictors(), one_hot = TRUE) %>%  # crear dummies
+  step_lincomb(all_predictors()) %>%              # elimina colinealidad exacta
+  step_normalize(all_numeric_predictors())         # normalizar numéricas
+
+lm_recipe_
+
+lm_wf_ <- workflow() %>%
+  add_model(lm_spec_) %>%
+  add_recipe(lm_recipe_) %>%
+  fit(train_num)
+```
+
+```{r}
+### --- Evaluación del modelo LPM ---
+
+# Generar predicciones del modelo LPM (probabilidades)
+pred_val_lpm <- predict(lm_wf_, train_val) %>% 
+  bind_cols(train_val %>% select(poor))
+
+# Revisar primeras filas
+head(pred_val_lpm)
+
+# Calcular AUC
+auc_lpm_ <- pred_val_lpm %>% roc_auc(truth = poor, .pred) %>% pull(.estimate)
+
+metrics_lpm <- pred_val_lpm %>%
+  metrics(truth = poor, estimate = poor)
+
+accuracy_lpm_ <- metrics_lpm %>% filter(.metric == "accuracy") %>% pull(.estimate)
+f1_lpm_       <- metrics_lpm %>% filter(.metric == "f_meas") %>% pull(.estimate)
+
+
+### --- Evaluación del modelo Logit penalizado ---
+
+# Generar predicciones de probabilidad
+#Ridge
+pred_val_ridge <- predict(final_ridge_wf, train_val, type = "prob") %>%
+  bind_cols(train_val %>% select(poor))
+
+metrics_logit__ <- pred_val_ridge %>%
+  metrics(truth = poor, estimate = poor)
+
+
+# Calcular AUC
+auc_ridge <- pred_val_ridge %>%  roc_auc(truth = poor, .pred_Pobre) %>%  pull(.estimate)
+
+accuracy_logit__ <- metrics_logit__ %>% filter(.metric == "accuracy") %>% pull(.estimate)
+f1_logit_R       <- metrics_logit__ %>% filter(.metric == "f_meas") %>% pull(.estimate)
+
+
+# Lasso
+pred_val_lasso <- predict(final_lasso_wf, train_val, type = "prob") %>%
+  bind_cols(train_val %>% select(poor))
+
+metrics_logit_ <- pred_val_lasso %>%
+  metrics(truth = poor, estimate = poor)
+
+# Calcular AUC
+auc_lasso <- pred_val_lasso %>%  roc_auc(truth = poor, .pred_Pobre) %>%  pull(.estimate)
+
+accuracy_logit_ <- metrics_logit_ %>% filter(.metric == "accuracy") %>% pull(.estimate)
+f1_logit_L       <- metrics_logit_ %>% filter(.metric == "f_meas") %>% pull(.estimate)
+
+```
+
+```{r}
+
+### --- 3.3 Análisis comparativo ---
+```
+
+```{r}
+library(ggplot2)
+library(knitr)
+```
+
+```{r}
+# --- Tabla comparativa de AUCs ---
+# Tabla comparativa
+metrics_comparison <- tibble(
+  Modelo = c("LPM", "Ridge", "Lasso"),
+  AUC = c(auc_lpm_, auc_ridge, auc_lasso)
+) %>%
+  gt() %>%
+  tab_header(title = "Comparación de desempeño (AUC)") %>%
+  fmt_number(columns = AUC, decimals = 3)
+
+
+# ---  Curva ROC comparativa ---
+
+# Calcular curvas ROC por separado
+roc_lpm <- pred_val_lpm %>%
+  roc_curve(truth = poor, .pred) %>%
+  mutate(Modelo = "LPM")
+
+roc_ridge <- pred_val_ridge %>%
+  roc_curve(truth = poor, .pred_Pobre) %>%
+  mutate(Modelo = "Ridge Logit penalizado")
+
+roc_lasso <- pred_val_lasso %>%
+  roc_curve(truth = poor, .pred_Pobre) %>%
+  mutate(Modelo = "Lasso Logit")
+
+# Unir ambas curvas
+roc_all <- bind_rows(roc_lpm, roc_ridge, roc_lasso)
+
+# Graficar
+ggplot(roc_all, aes(x = 1 - specificity, y = sensitivity, color = Modelo)) +
+  geom_line(size = 1.1) +
+  geom_abline(linetype = "dashed", color = "gray50") +
+  theme_minimal(base_size = 13) +
+  ggtitle("Curva ROC comparativa: LPM, Ridge y Lasso") +
+  scale_color_manual(values = c("#0072B2", "#E69F00", "#D55E00")) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```  
+
+
+```{r}
+### 3.4. Importancia de las caracteristicas
+# Importancia en LPM: coeficientes
+lm_fit <- extract_fit_parsnip(lm_wf_)
+lm_fit %>%
+  tidy() %>%
+  arrange(desc(abs(estimate))) %>%
+  slice_head(n = 10) %>%
+  knitr::kable(digits = 3)
+
+# Importancia en Logit penalizado (glmnet)
+logit_fit <- extract_fit_parsnip(final_logit_wf)
+vip(logit_fit, num_features = 15) +
+  ggtitle("Importancia de características - Modelo Logit penalizado")
+```
+```{r}
+### 3.5. Exportación de predicciones a Kaggle Logit
+
+# --- Preparar base de test ---
+ids <- test_hogares_final$id  # guardar los IDs originales
+
+# LPM
+pred_test_lpm <- predict(lm_wf, test, type = "numeric") %>%
+  mutate(pobre = ifelse(.pred >= 0.5, 1, 0), id = ids) %>%
+  select(id, pobre)
+write.csv(pred_test_lpm, "LPM_submission.csv", row.names = FALSE)
+
+# Ridge
+pred_test_ridge <- predict(final_ridge_wf, test, type = "prob") %>%
+  transmute(id = ids, pobre = .pred_Pobre)
+write.csv(pred_test_ridge, "Ridge_submission.csv", row.names = FALSE)
+
+# Lasso
+pred_test_lasso <- predict(final_lasso_wf, test, type = "prob") %>%
+  transmute(id = ids, pobre = .pred_Pobre)
+write.csv(pred_test_lasso, "Lasso_submission.csv", row.names = FALSE)
+
+```
+
+
+```{r}
+### --- 3.6. Desempeño general y selección del mejor modelo ---
+
+# Función auxiliar para asegurar valores únicos o NA
+seguro <- function(x) {
+  if (length(x) == 0 || all(is.na(x))) return(NA_real_)
+  else return(as.numeric(x[1]))
+}
+# Consolidar métricas clave
+tabla_desempeno <- tibble::tibble(
+  Modelo = c("LPM","Logit", "LPM2", "Ridge", "Lasso"),
+  AUC = c(seguro(auc_lpm), seguro(auc_logit), seguro(auc_lpm_), seguro(auc_ridge), seguro(auc_lasso)),
+  Accuracy = c(seguro(accuracy_lpm), seguro(accuracy_logit), seguro(accuracy_lpm_), seguro(accuracy_logit__),seguro(accuracy_logit_)),
+)
+
+# Mostrar tabla con formato
+tabla_desempeno_gt <- tabla_desempeno %>%
+  gt() %>%
+  tab_header(title = "Desempeño comparativo de los modelos") %>%
+  fmt_number(columns = c(AUC, Accuracy), decimals = 3) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = "Modelo")
+  )
+
+# Exportar tabla
+gtsave(tabla_desempeno_gt, "Tablas y Graficos/21.Desempeno_Modelos.html")
+# Exportar en PNG
+gtsave(tabla_desempeno_gt, "Tablas y Graficos/21.Desempeno_Modelos.png")
+
+# Identificar mejor modelo según AUC
+mejor_modelo <- tabla_desempeno %>%
+  filter(AUC == max(AUC, na.rm = TRUE)) %>%
+  pull(Modelo)
+
+cat("✅ El mejor modelo según AUC es:", mejor_modelo, "\n")
+
+# Visualizar tabla
+tabla_desempeno_gt
+
+###############
+
+### --- Mostrar predicciones del mejor modelo ---
+
+# Escoger automáticamente las predicciones según el mejor modelo
+if (mejor_modelo == "LPM") {
+  predicciones_finales <- pred_val_lpm %>%
+    mutate(
+      Prob_Pobre = .pred,
+      Prediccion = ifelse(Prob_Pobre >= 0.5, "Pobre", "No pobre")
+    )
+} else if (mejor_modelo == "Logit") {
+  predicciones_finales <- pred_val_logit %>%
+    mutate(
+      Prob_Pobre = .pred_Pobre,
+      Prediccion = ifelse(Prob_Pobre >= 0.5, "Pobre", "No pobre")
+    )
+} else if (mejor_modelo == "Ridge") {
+  predicciones_finales <- pred_val_ridge %>%
+    mutate(
+      Prob_Pobre = .pred_Pobre,
+      Prediccion = ifelse(Prob_Pobre >= 0.5, "Pobre", "No pobre")
+    )
+} else if (mejor_modelo == "Lasso") {
+  predicciones_finales <- pred_val_lasso %>%
+    mutate(
+      Prob_Pobre = .pred_Pobre,
+      Prediccion = ifelse(Prob_Pobre >= 0.5, "Pobre", "No pobre")
+    )
+} else {
+  predicciones_finales <- tibble(Mensaje = "No hay predicciones disponibles para este modelo.")
+}
+
+# --- Mostrar primeras 10 predicciones ---
+if ("Prob_Pobre" %in% names(predicciones_finales)) {
+  tabla_predicciones <- predicciones_finales %>%
+    select(Prob_Pobre, Prediccion) %>%
+    head(10) %>%
+    gt() %>%
+    tab_header(title = paste("Predicciones del modelo", mejor_modelo)) %>%
+    fmt_number(columns = Prob_Pobre, decimals = 3)
+
+  # Exportar tabla de predicciones
+  gtsave(tabla_predicciones, paste0("Tablas y Graficos/22.Predicciones_", mejor_modelo, ".html"))
+  webshot2::webshot(
+    paste0("Tablas y Graficos/22.Predicciones_", mejor_modelo, ".html"),
+    paste0("Tablas y Graficos/22.Predicciones_", mejor_modelo, ".pdf")
+  )
+  gtsave(tabla_predicciones, paste0("Tablas y Graficos/22.Predicciones_", mejor_modelo, ".png"))
+
+  tabla_predicciones
+} else {
+  print(predicciones_finales)
+}
+
+```
+
+
+```{r}
+### --- 3.7. Tabla de predicciones del mejor modelo (ejemplo con Lasso) ---
+
+predicciones_finales <- pred_val_lasso %>%
+  mutate(
+    Prob_Pobre = .pred_Pobre,
+    Prediccion = ifelse(Prob_Pobre >= 0.5, "Pobre", "No pobre")
+  ) %>%
+  select(poor, Prob_Pobre, Prediccion)
+
+head(predicciones_finales, 10) %>%
+  gt() %>%
+  tab_header(title = "Predicciones del modelo Lasso (10 primeras observaciones)") %>%
+  fmt_number(columns = Prob_Pobre, decimals = 3)
+```
+
+
+
 
 ## ELASTIC NET
 ### Elastic Net 1
