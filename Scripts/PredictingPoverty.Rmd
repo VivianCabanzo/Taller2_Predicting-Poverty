@@ -24,6 +24,8 @@ knitr::opts_chunk$set(echo = TRUE)
 A continuación se cargan los paquetes y librerias necesarias para el análisis de información.
 
 ```{r}
+options(error = traceback)
+
 # Instalar y cargar pacman (gestor de paquetes)
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
@@ -1457,7 +1459,7 @@ test_hogares_final$Dominio <- factor(test_hogares_final$Dominio,
 set.seed(123)
 
 # Creamos receta para balancear
-receta_cart <- recipe(
+receta_cart_1 <- recipe(
   Pobre ~ Clase + Dominio + Tipo_vivienda + Nper +
     Sexo + Edad + Nivel_educativo + Actividad_Ocup,
   data = train_hogares_final
@@ -1477,7 +1479,7 @@ fiveStats <- function(...) {
 
 
 # Validación cruzada
-ctrl <- trainControl(
+ctrl_cart_1 <- trainControl(
   method = "cv", #Validación cruzada
   number = 5, #particiones
   summaryFunction = fiveStats, #Función de metricas anterior
@@ -1488,8 +1490,8 @@ ctrl <- trainControl(
 
 
 # Entrenamiento del modelo CART
-modelo_cart<- train(
-  receta_cart,
+modelo_cart_1<- train(
+  receta_cart_1,
   data = train_hogares_final,
   method = "rpart", #Metodo cart
   trControl = ctrl,
@@ -1497,32 +1499,32 @@ modelo_cart<- train(
   metric = "ROC"  #Métrica  AUC de ROC
 )
 
-modelo_cart
+modelo_cart_1
 
 # Extraer predicciones de caret
-preds <- modelo_cart$pred
+preds_cart <- modelo_cart_1$pred
 
 
 # Crear el objeto de predicción para ROC
-pred_rocr <- prediction(preds$Pobre, preds$obs)
+pred_rocr_cart <- prediction(preds_cart$Pobre, preds_cart$obs)
 
 # Calcular el F1-score a lo largo de todos los posibles umbrales
-f1 <- performance(pred_rocr, "f")
+f1_cart_1 <- performance(pred_rocr, "f")
 
 # Extraemos el índice del mejor F1
-best_index <- which.max(slot(f1, "y.values")[[1]])
+best_index_cart_1 <- which.max(slot(f1, "y.values")[[1]])
 
 # Extraemos el valor de F1 Máximo
-best_f1 <- slot(f1, "y.values")[[1]][best_index]
-best_cutoff <- slot(f1, "x.values")[[1]][best_index]
+best_f1_cart_1 <- slot(f1, "y.values")[[1]][best_index_cart_1]
+best_cutoff_cart_1 <- slot(f1, "x.values")[[1]][best_index_cart_1]
 
 cat("Mejor cutoff):", round(best_cutoff, 3), "\n")
 cat("F1 máximo:", round(best_f1, 3), "\n")
 
 
 # Poda del arbol
-cp_optimo <- modelo_cart$bestTune$cp
-arbol_prunin <- prune(modelo_cart$finalModel, cp = cp_optimo)
+cp_optimo_cart <- modelo_cart_1$bestTune$cp
+arbol_prunin_cart <- prune(modelo_cart_1$finalModel, cp = cp_optimo_cart)
 
 #Visualización del arbol
 
@@ -1548,13 +1550,13 @@ dev.off()
 
 
 # Predicciones:
-pred_cart<- predict(modelo_cart, newdata = test_hogares_final, type = "prob")
+pred_cart_1<- predict(modelo_cart_1, newdata = test_hogares_final, type = "prob")
 
-test_hogares_final$Prob_Pobre <- pred_cart[, "Pobre"] #Pobre es la clase positiva
-test_hogares_final$pobre <- ifelse(test_hogares_final$Prob_Pobre >= best_cutoff, 1, 0) 
+test_hogares_final$Prob_Pobre <- pred_cart_1[, "Pobre"] #Pobre es la clase positiva
+test_hogares_final$pobre <- ifelse(test_hogares_final$Prob_Pobre >= best_cutoff_cart_1, 1, 0) 
 
-Prediccion_cart <- test_hogares_final |> select(id, pobre)
-head(Prediccion_cart)
+Prediccion_cart_1 <- test_hogares_final |> select(id, pobre)
+head(Prediccion_cart_1)
 
 # Guedamos el archivo
 saveRDS(modelo_cart, file = "CART_cp_0_005.rds")
@@ -1659,7 +1661,7 @@ library(xgboost)
 library(doParallel)
 
 # Luego la receta SIN step_smote()
-receta_xgb <- recipe(
+receta_xgb_1 <- recipe(
   Pobre ~ Clase + Dominio + Tipo_vivienda + Nper +
     Sexo + Edad + Nivel_educativo + Actividad_Ocup,
   data = train_hogares_final
@@ -1674,7 +1676,7 @@ receta_xgb <- recipe(
 
 #️  Control de entrenamiento
 
-ctrl_xgb <- trainControl(
+ctrl_xgb_1 <- trainControl(
   method = "cv",
   number = 5,
   summaryFunction = twoClassSummary,  # o f1_summary si defines tu propia métrica
@@ -1687,7 +1689,7 @@ ctrl_xgb <- trainControl(
 
 #  Grid de hiperparámetros XGBoost
 
-grid_xgb <- expand.grid(
+grid_xgb_1 <- expand.grid(
   nrounds = c(300),
   max_depth = c(4, 6),
   eta = c(0.05, 0.1),
@@ -1697,7 +1699,7 @@ grid_xgb <- expand.grid(
   subsample = c(0.8)
 )
 
-grid_xgb
+grid_xgb_1
 
 cl <- makeCluster(parallel::detectCores() - 1)
 registerDoParallel(cl)
@@ -1705,8 +1707,8 @@ registerDoParallel(cl)
 # Entrenamiento del modelo XGBoost Boosting
 registerDoSEQ()   # Desactiva paralelo
 
-modelo_xgb <- train(
-  receta_xgb,
+modelo_xgb_1 <- train(
+  receta_xgb_1,
   data = train_hogares_final,
   method = "xgbTree",
   trControl = ctrl,
@@ -1716,8 +1718,8 @@ modelo_xgb <- train(
 
 # Resultados del modelo
 
-modelo_xgb
-varImp(modelo_xgb)
+modelo_xgb_1
+varImp(modelo_xgb_1)
 
 
 ```
@@ -1732,35 +1734,35 @@ Aquí se evalúan y aplican los resultados del modelo XGBoost previamente entren
 
 ```{r}
 # Crear objeto con las predicciones del CV interno
-pred <- prediction(modelo_xgb$pred$Pobre, modelo_xgb$pred$obs)
+pred <- prediction(modelo_xgb_1$pred$Pobre, modelo_xgb_1$pred$obs)
 
 # Calcular F1 en todos los posibles puntos de corte
 perf <- performance(pred, "f")
 
 # Encontrar el índice del F1 máximo
-best_f1_index <- which.max(slot(perf, "y.values")[[1]])
+best_f1_index_xgb <- which.max(slot(perf, "y.values")[[1]])
 
 # Extraer el cutoff correspondiente
-best_cutoff <- slot(perf, "x.values")[[1]][best_f1_index]
-best_f1 <- slot(perf, "y.values")[[1]][best_f1_index]
+best_cutoff_xgb <- slot(perf, "x.values")[[1]][best_f1_index_xgb]
+best_f1_xgb <- slot(perf, "y.values")[[1]][best_f1_index_xgb]
 
 cat("Mejor cutoff encontrado:", round(best_cutoff, 3), "\n")
 cat("F1 máximo obtenido:", round(best_f1, 3), "\n")
 
-best_cutoff <- 0.343
+best_cutoff_xgb <- 0.343
 
 # Predicciones en test
-pred_prob <- predict(modelo_xgb, newdata = test_hogares_final, type = "prob")
+pred_prob <- predict(modelo_xgb_1, newdata = test_hogares_final, type = "prob")
 
 # Generar variable binaria Pobre/No Pobre
 test_hogares_final <- test_hogares_final %>%
   mutate(
     Prob_Pobre = pred_prob[, "Pobre"],
-    pobre = ifelse(Prob_Pobre >= best_cutoff, 1, 0)
+    pobre = ifelse(Prob_Pobre >= best_cutoff_xgb, 1, 0)
   )
 
 #  Crear archivo de envío
-predict_boosting <- test_hogares_final %>%
+predict_boosting_xgb <- test_hogares_final %>%
   select(id, pobre)
 
 
@@ -1768,7 +1770,7 @@ predict_boosting <- test_hogares_final %>%
 
 
 #  Extraer hiperparámetros del mejor modelo
-params <- modelo_xgb$bestTune
+params <- modelo_xgb_1$bestTune
 param_str <- sprintf("n%s_md%s_eta%s_sub%s_col%s",
                      params$nrounds,
                      params$max_depth,
@@ -1780,8 +1782,8 @@ param_str <- sprintf("n%s_md%s_eta%s_sub%s_col%s",
 file_tag <- paste0("XGB_", param_str, "_SMOTE_CV5_cut", best_cutoff, "_")
 
 #  Guardar modelo y predicciones
-saveRDS(modelo_xgb, paste0(file_tag, ".rds"))
-write.csv(predict_boosting, paste0(file_tag, ".csv"), row.names = FALSE)
+saveRDS(modelo_xgb_1, paste0(file_tag, ".rds"))
+write.csv(predict_boosting_1, paste0(file_tag, ".csv"), row.names = FALSE)
 
 
 ```
@@ -1927,7 +1929,7 @@ train_hogares_final <- train_hogares_final %>%
 
 test_hogares_final <- test_hogares_final %>%
   mutate(
-    Edad2 = Edad^2,
+    Edad2 = Edad^2
   )
 
 
@@ -2008,7 +2010,7 @@ modelo_cart <- train(
   Pobre ~ ., data = train_ready,
   method = "rpart",
   trControl = trainControl(method = "cv", number = 3, classProbs = TRUE),
-  tuneGrid = expand.grid(cp = seq(0.001, 0.01, 0.002))) #Ayuda a ser mas interpretable 
+  tuneGrid = expand.grid(cp = seq(0.001, 0.01, 0.002))) #para mas interpretabilidad
 
 # Predicciones del ensemble en el TRAIN 
 pred_xgb_train  <- predict(modelo_xgb, newdata = train_ready, type = "prob")[, "Pobre"] #predicción xgb
@@ -2019,6 +2021,9 @@ pesos <- seq(0.5, 0.9, by = 0.1) #en xgb se prueban compinaciones entre 0.5 y 0.
 mejor_f1 <- 0
 mejor_peso <- 0
 mejor_cutoff <- 0
+
+
+
 
 # Loop para buscar pesos y cutoff que maximiza f1
 for (w in pesos) {
@@ -2046,7 +2051,7 @@ cat(" F1 máximo estimado:", round(mejor_f1, 3), "\n")
 
 pred_xgb_test  <- predict(modelo_xgb, newdata = test_ready, type = "prob")[, "Pobre"]
 pred_cart_test <- predict(modelo_cart, newdata = test_ready, type = "prob")[, "Pobre"]
-
+prob_ens_opt <- mejor_peso * pred_xgb_train + (1 - mejor_peso) * pred_cart_train
 
 #  Aplicar ensemble en TEST
 test_ready$Prob_Pobre_Ens <- mejor_peso * pred_xgb_test + (1 - mejor_peso) * pred_cart_test #Aplicar pesos y umbral
@@ -2062,9 +2067,91 @@ csv_name <- paste0(
   "_cut", round(mejor_cutoff, 3), "_", ".csv"
 )
 
+
 write.csv(test_ready %>% select(id, pobre), csv_name, row.names = FALSE)
 
 ```
+
+
+
+```{r}
+
+library(ROCR)
+library(ggplot2)
+library(dplyr)
+library(scales)
+
+# ==========================
+# 🔧 Guardar resultados reales del loop
+# ==========================
+resultados <- data.frame()
+
+for (w in pesos) {
+  prob_ens <- w * pred_xgb_train + (1 - w) * pred_cart_train
+  pred_obj <- prediction(prob_ens, train_ready$Pobre)
+  perf_f1 <- performance(pred_obj, "f")
+  umbrales <- slot(perf_f1, "x.values")[[1]]
+  f1_vals  <- slot(perf_f1, "y.values")[[1]]
+  
+  df_temp <- data.frame(
+    Peso_XGB = w,
+    Umbral = umbrales,
+    F1 = f1_vals
+  )
+  resultados <- rbind(resultados, df_temp)
+}
+
+# ==========================
+# 🔍 Filtrar el mejor peso (ej. 0.9) y buscar F1 óptimo
+# ==========================
+resultados_filtrado <- resultados %>% filter(Peso_XGB == mejor_peso)
+optimo <- resultados_filtrado[which.max(resultados_filtrado$F1), ]
+
+# ==========================
+# 🎨 Gráfica real del F1 vs Umbral
+# ==========================
+ensamble_grafica <- ggplot(resultados_filtrado, aes(x = Umbral, y = F1)) +
+  geom_area(fill = "#D6EAF8", alpha = 0.6) +
+  geom_line(color = "#21618C", linewidth = 1.3) +
+  geom_point(data = optimo, aes(x = Umbral, y = F1),
+             color = "#E74C3C", size = 3.5) +
+  geom_label(
+    data = optimo,
+    aes(label = paste0("Umbral óptimo = ", round(optimo$Umbral, 3),
+                       "\nF1 = ", round(optimo$F1, 3))),
+    fill = "#E74C3C", color = "white",
+    fontface = "bold", label.size = 0,
+    vjust = -0.5, size = 3.8
+  ) +
+  labs(
+    title = "Optimización del umbral de clasificación",
+    subtitle = paste0("Modelo Ensamble (XGBoost + CART) con peso XGB = ", mejor_peso),
+    x = "Umbral de clasificación (cutoff)",
+    y = "F1-score"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5, color = "gray30"),
+    axis.title = element_text(face = "bold")
+  )
+
+ensamble_grafica
+
+# ==========================
+# 💾 Guardar la figura
+# ==========================
+dir.create("Tablas y Graficos", showWarnings = FALSE)
+
+ggsave("Tablas y Graficos/ENSAMBLE_F1vsUmbral.png", plot = ensamble_grafica,
+       width = 8, height = 5, dpi = 300)
+ggsave("Tablas y Graficos/ENSAMBLE_F1vsUmbral.pdf", plot = ensamble_grafica,
+       width = 8, height = 5)
+
+
+```
+
+
 
 ### 3.1. Seleccion de modelos y entrenamiento
 
