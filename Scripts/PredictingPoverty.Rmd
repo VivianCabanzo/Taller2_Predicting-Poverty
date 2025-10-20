@@ -63,7 +63,6 @@ pacman::p_load(
   ranger,        # Entrenar modelos de Random Forest
   vip,           # visualiza la importancia de las variables
   forcats,       # Manejo de variables categóricas (factores)
-  scales,        # Formatear valores y ejes en gráficos
   vtable,        # Generar tablas de resumen descriptivo de forma rápida y visualmente clara
   recipes,       # Preprocesamiento de datos (pipeline)
   themis,        # Balancear clases (SMOTE, up/downsampling)
@@ -72,8 +71,14 @@ pacman::p_load(
   doParallel,
   yardstick,
   scales,
-  glue
+  glue,
+  tidymodels,
+  themis,
+  gt
+
 )
+
+
 
 # Verificar paquetes cargados
 pacman::p_loaded()
@@ -1794,7 +1799,7 @@ figura_categoricas
 ```{r}
 ### Seleccion de modelos y entrenamiento
 
-library(tidymodels)
+
 set.seed(12665)
 ```
 ```{r}
@@ -1845,9 +1850,9 @@ train_tr_num <- training(split_num)
 train_val_num <- testing(split_num)
 
 
-#-----------------------------
-### --- Reciper Y Modelos ---
-#-----------------------------
+
+###   Reciper Y Modelos 
+
 
 base_recipe <- recipe(poor ~ ., data = train_fac) %>%
   step_zv(all_predictors()) %>%                               # Eliminar variables sin variación
@@ -2111,10 +2116,7 @@ f1_logit       <- metrics_logit %>% filter(.metric == "f_meas") %>% pull(.estima
 ### --- 3.3 Análisis comparativo ---
 ```
 
-```{r}
-library(ggplot2)
-library(knitr)
-```
+
 
 ```{r}
 
@@ -2222,7 +2224,6 @@ head(pred_test_lpm)
 
 ```
 
-## 4. Conclusiones
 
 ##### ____________ SEGUNDA PREDICCIÓN________########
 
@@ -2231,16 +2232,6 @@ head(pred_test_lpm)
 ```
 
 ```{r}
-
-library(tidyverse)
-library(tidymodels)
-library(themis)
-library(vip)
-library(glmnet)
-library(yardstick)
-library(forcats)
-library(gt)
-library(webshot2)
 
 set.seed(12665)
 
@@ -2355,11 +2346,8 @@ gtsave(tabla_modelos_2, "Tablas y Graficos/20.Especificaciones_modelos.png")
 tabla_modelos_2
 ```
 
-```{r}
-library(gt)
-library(webshot2)
 
-```
+
 
 ```{r}
 ### --- 3.2 Hiperparámetros (modelo Logit penalizado) ---
@@ -2487,10 +2475,7 @@ f1_logit_L       <- metrics_logit_ %>% filter(.metric == "f_meas") %>% pull(.est
 ### --- 3.3 Análisis comparativo ---
 ```
 
-```{r}
-library(ggplot2)
-library(knitr)
-```
+
 
 ```{r}
 # --- Tabla comparativa de AUCs ---
@@ -4481,7 +4466,6 @@ ggsave("Tablas y Graficos/ENSAMBLE_F1vsUmbral.pdf", plot = ensamble_grafica,
 ```
 
 
-## 4. Conclusiones
 
 
 
