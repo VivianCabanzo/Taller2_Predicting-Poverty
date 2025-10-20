@@ -67,7 +67,7 @@ Se implementan diferentes algoritmos de aprendizaje supervisado para la predicci
 | **Vivian Cabanzo Fernández** | 202513800 | 
 | **Laura Daniela Diaz Torres** | 202425507 |
 | **Cristian Felipe Muñoz Guerrero** | | 
-| **Zenneth Olivero Tapia** | |
+| **Zeneth Olivero Tapia** | 202512665 |
 
 > Cada integrante realizó al menos cinco contribuciones significativas al repositorio.
 
