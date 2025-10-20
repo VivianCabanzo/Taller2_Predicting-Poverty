@@ -2689,6 +2689,208 @@ head(predicciones_finales, 10) %>%
 
 
 
+```{r}
+### --- 3.4 Tabla de resumen del modelo Logit penalizado (adaptada) ---
+
+# Extraer métricas promedio del modelo Logit penalizado
+metrics_logit <- pred_val_logit %>%
+  metrics(truth = poor, estimate = poor)
+
+# Función auxiliar para extraer métricas con seguridad
+seguro <- function(x) {
+  if (length(x) == 0 || all(is.na(x))) return(NA_real_)
+  else return(as.numeric(x[1]))
+}
+
+# Construir tabla de resumen
+resultados_logit <- tibble::tibble(
+  Métrica = c("Número de muestras", 
+              "Número de predictores", 
+              "Número de clases", 
+              "Pasos de preprocesamiento",
+              "Método de validación", 
+              "Tamaño promedio de muestra en CV",
+              "Mejor combinación de hiperparámetros",
+              "ROC (AUC) en validación",
+              "Accuracy en validación",
+              "F1-score en validación"),
+  Valor = c(
+    format(nrow(train_fac), big.mark = ","), 
+    as.character(ncol(train_fac) - 1),
+    "2 (No Pobre, Pobre)",
+    "zv, impute, dummy, normalize",
+    "Validación Cruzada (5 folds)",
+    paste0("≈", format(round(nrow(train_fac) * 0.8 / 5), big.mark = ","), " observaciones por fold"),
+    paste0("lambda = ", round(best_logit$penalty, 4), ", alpha = ", round(best_logit$mixture, 2)),
+    round(seguro(auc_logit), 3),
+    round(seguro(accuracy_logit), 3),
+    round(seguro(f1_logit), 3)
+  )
+)
+
+# Crear tabla con estilo profesional
+tabla_logit <- resultados_logit %>%
+  gt() %>%
+  tab_header(
+    title = md("*Resumen del Modelo Logit Penalizado*"),
+    subtitle = "Entrenado con validación cruzada y ajuste de hiperparámetros"
+  ) %>%
+  cols_label(
+    Métrica = "Métrica del modelo",
+    Valor = "Valor estimado"
+  ) %>%
+  fmt_number(
+    columns = Valor,
+    decimals = 3,
+    rows = 8:10
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold", color = "white"),
+    locations = cells_title(groups = "title")
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "gray30"),
+    locations = cells_title(groups = "title")
+  ) %>%
+  opt_table_font(font = list(google_font("Roboto"))) %>%
+  tab_options(
+    table.font.size = px(13),
+    table.width = pct(100)
+  )
+
+# Mostrar tabla
+tabla_logit
+
+# Exportar tabla
+dir.create("Tablas y Graficos", showWarnings = FALSE)
+
+gtsave(tabla_logit, "Tablas y Graficos/23.Resumen_Modelo_Logit.html")
+webshot2::webshot("Tablas y Graficos/23.Resumen_Modelo_Logit.html", "Tablas y Graficos/Resumen_Modelo_Logit.pdf")
+gtsave(tabla_logit, "Tablas y Graficos/23.Resumen_Modelo_Logit.png")
+
+```
+
+
+
+
+```{r}
+# --- Tabla resumen: Modelo LPM (lm_wf) ---
+
+resultados_lpm <- tibble::tibble(
+  Métrica = c("Número de muestras", "Número de predictores", "Tipo de modelo",
+              "Pasos de preprocesamiento", "Validación", "AUC", "Accuracy", "F1-score"),
+  Valor = c(
+    format(nrow(train_fac), big.mark = ","),
+    as.character(ncol(train_fac) - 1),
+    "Regresión lineal (probabilidad)",
+    "zv, impute, dummy, normalize",
+    "Split 80/20",
+    round(seguro(auc_lpm), 3),
+    round(seguro(accuracy_lpm), 3),
+    round(seguro(f1_lpm), 3)
+  )
+)
+
+tabla_lpm <- resultados_lpm %>%
+  gt() %>%
+  tab_header(title = md("*Resumen del Modelo LPM*")) %>%
+  fmt_number(columns = Valor, decimals = 3, rows = 6:8)
+
+gtsave(tabla_lpm, "Tablas y Graficos/24.Resumen_Modelo_LPM.html")
+webshot2::webshot("Tablas y Graficos/24.Resumen_Modelo_LPM.html", "Tablas y Graficos/Resumen_Modelo_LPM.pdf")
+gtsave(tabla_lpm, "Tablas y Graficos/24.Resumen_Modelo_LPM.png")
+```
+
+```{r}
+# --- Tabla resumen: Modelo LPM_ (lm_wf_) ---
+
+resultados_lpm_ <- tibble::tibble(
+  Métrica = c("Número de muestras", "Número de predictores", "Tipo de modelo",
+              "Pasos de preprocesamiento", "Validación", "AUC", "Accuracy", "F1-score"),
+  Valor = c(
+    format(nrow(train_fac), big.mark = ","),
+    as.character(ncol(train_fac) - 1),
+    "Regresión lineal (probabilidad)",
+    "zv, impute, dummy, lincomb, normalize",
+    "Split 80/20",
+    round(seguro(auc_lpm_), 3),
+    round(seguro(accuracy_lpm_), 3),
+    round(seguro(f1_lpm_), 3)
+  )
+)
+
+tabla_lpm_ <- resultados_lpm_ %>%
+  gt() %>%
+  tab_header(title = md("*Resumen del Modelo LPM (versión 2)*")) %>%
+  fmt_number(columns = Valor, decimals = 3, rows = 6:8)
+
+gtsave(tabla_lpm_, "Tablas y Graficos/25.Resumen_Modelo_LPM2.html")
+webshot2::webshot("Tablas y Graficos/25.Resumen_Modelo_LPM2.html", "Tablas y Graficos/Resumen_Modelo_LPM2.pdf")
+gtsave(tabla_lpm_, "Tablas y Graficos/25.Resumen_Modelo_LPM2.png")
+```
+
+```{r}
+# --- Tabla resumen: Modelo Ridge ---
+
+resultados_ridge <- tibble::tibble(
+  Métrica = c("Número de muestras", "Número de predictores", "Tipo de modelo",
+              "Pasos de preprocesamiento", "Validación", "Hiperparámetro λ",
+              "AUC", "Accuracy", "F1-score"),
+  Valor = c(
+    format(nrow(train_fac), big.mark = ","),
+    as.character(ncol(train_fac) - 1),
+    "Logit penalizado (Ridge)",
+    "zv, impute, dummy, normalize",
+    "Validación Cruzada (5 folds)",
+    round(seguro(best_ridge$penalty), 4),
+    round(seguro(auc_ridge), 3),
+    round(seguro(accuracy_logit__), 3),
+    round(seguro(f1_logit_R), 3)
+  )
+)
+
+tabla_ridge <- resultados_ridge %>%
+  gt() %>%
+  tab_header(title = md("*Resumen del Modelo Ridge*")) %>%
+  fmt_number(columns = Valor, decimals = 3, rows = 7:9)
+
+gtsave(tabla_ridge, "Tablas y Graficos/26.Resumen_Modelo_Ridge.html")
+webshot2::webshot("Tablas y Graficos/26.Resumen_Modelo_Ridge.html", "Tablas y Graficos/Resumen_Modelo_Ridge.pdf")
+gtsave(tabla_ridge, "Tablas y Graficos/26.Resumen_Modelo_Ridge.png")
+```
+
+
+```{r}
+# --- Tabla resumen: Modelo Lasso ---
+
+resultados_lasso <- tibble::tibble(
+  Métrica = c("Número de muestras", "Número de predictores", "Tipo de modelo",
+              "Pasos de preprocesamiento", "Validación", "Hiperparámetro λ",
+              "AUC", "Accuracy", "F1-score"),
+  Valor = c(
+    format(nrow(train_fac), big.mark = ","),
+    as.character(ncol(train_fac) - 1),
+    "Logit penalizado (Lasso)",
+    "zv, impute, dummy, normalize",
+    "Validación Cruzada (5 folds)",
+    round(seguro(best_lasso$penalty), 4),
+    round(seguro(auc_lasso), 3),
+    round(seguro(accuracy_logit_), 3),
+    round(seguro(f1_logit_L), 3)
+  )
+)
+
+tabla_lasso <- resultados_lasso %>%
+  gt() %>%
+  tab_header(title = md("*Resumen del Modelo Lasso*")) %>%
+  fmt_number(columns = Valor, decimals = 3, rows = 7:9)
+
+gtsave(tabla_lasso, "Tablas y Graficos/27.Resumen_Modelo_Lasso.html")
+webshot2::webshot("Tablas y Graficos/27.Resumen_Modelo_Lasso.html", "Tablas y Graficos/Resumen_Modelo_Lasso.pdf")
+gtsave(tabla_lasso, "Tablas y Graficos/27. Resumen_Modelo_Lasso.png")
+```
+
+
 
 ## ELASTIC NET
 ### Elastic Net 1
