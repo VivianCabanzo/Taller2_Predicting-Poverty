@@ -1787,6 +1787,29 @@ figura_categoricas
 
 ## 3. Modelos y Resultados
 
+#################################################### REGRESIÓN LINEAL Y LOGIT
+
+
+```{r}
+### Seleccion de modelos y entrenamiento
+
+library(tidymodels)
+set.seed(12665)
+```
+```{r}
+### --- BASES DE DATOS ---
+train_R <- train_hogares_final
+test_R  <- test_hogares_final
+
+# Base limpia común (sin ID, con nombres correctos)
+train_base <- train_R %>%
+  rename(poor = Pobre) %>%
+  select(-id)
+
+# Versión para LPM (numérica)
+train_num <- train_base %>%
+  mutate(poor = as.numeric(poor))
+
 
 
 ## ELASTIC NET
