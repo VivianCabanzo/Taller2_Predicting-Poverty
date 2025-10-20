@@ -2041,6 +2041,318 @@ tabla_recetas
 
 ```
 
+```{r}
+### --- Evaluación del modelo LPM ---
+# Generar predicciones del modelo LPM (probabilidades)
+pred_val_lpm <- predict(lm_wf, train_val) %>% 
+  bind_cols(train_val %>% select(poor))
+
+# Revisar primeras filas
+head(pred_val_lpm)
+
+# Calcular el AUC (Área Bajo la Curva ROC)
+# Evalúa la capacidad del modelo para discriminar entre pobres y no pobres
+auc_lpm <- pred_val_lpm %>%
+  roc_auc(truth = poor, .pred) %>%
+  pull(.estimate)
+
+
+# Calcular métricas globales de desempeño (accuracy, F1)
+metrics_lpm <- pred_val_lpm %>%
+  metrics(truth = poor, estimate = poor)
+
+
+# Extraer métricas específicas: exactitud y F1-score
+accuracy_lpm <- metrics_lpm %>% filter(.metric == "accuracy") %>% pull(.estimate)
+f1_lpm       <- metrics_lpm %>% filter(.metric == "f_meas") %>% pull(.estimate)
+
+
+### --- Evaluación del modelo Logit penalizado ---
+# Se calculan las métricas clave (AUC, Accuracy, F1-score) y se
+# grafican las curvas ROC comparativas para evaluar discriminación.
+
+# Generar predicciones de probabilidad
+pred_val_logit <- predict(final_logit_wf, train_val, type = "prob") %>%
+  bind_cols(train_val %>% select(poor))
+
+# Asegurar formato de variable dependiente
+pred_val_logit <- pred_val_logit %>%
+  mutate(
+    poor = fct_recode(poor, `0` = "No Pobre", `1` = "Pobre"),
+    poor = fct_relevel(poor, "0", "1")
+  )
+
+# Calcular AUC
+auc_logit <- pred_val_logit %>%
+  roc_auc(truth = poor, .pred_Pobre) %>%
+  pull(.estimate)
+
+
+# Crear clase binaria con umbral 0.5 para métricas
+pred_val_logit <- pred_val_logit %>%
+  mutate(
+    poor = forcats::fct_recode(poor, 
+                               "0" = "No Pobre", 
+                               "1" = "Pobre"),
+    poor = forcats::fct_relevel(poor, "0", "1")
+  )
+
+metrics_logit <- pred_val_logit %>%
+  metrics(truth = poor, estimate = poor)
+
+accuracy_logit <- metrics_logit %>% filter(.metric == "accuracy") %>% pull(.estimate)
+f1_logit       <- metrics_logit %>% filter(.metric == "f_meas") %>% pull(.estimate)
+
+```
+
+```{r}
+
+### --- 3.3 Análisis comparativo ---
+```
+
+```{r}
+library(ggplot2)
+library(knitr)
+```
+
+```{r}
+
+# --- Tabla comparativa de AUCs ---
+metrics_comparison <- tibble(
+  Modelo = c("LPM", "Logit penalizado"),
+  AUC = c(auc_lpm, auc_logit)
+)
+
+metrics_comparison %>%
+  knitr::kable(
+    digits = 3,
+    caption = "Comparación de desempeño entre modelos (AUC)"
+  )
+
+# ---  Curva ROC comparativa ---
+
+# Calcular curvas ROC por separado
+roc_lpm <- pred_val_lpm %>%
+  roc_curve(truth = poor, .pred) %>%
+  mutate(Modelo = "LPM")
+
+roc_logit <- pred_val_logit %>%
+  roc_curve(truth = poor, .pred_Pobre) %>%
+  mutate(Modelo = "Logit penalizado")
+
+# Unir ambas curvas
+roc_both <- bind_rows(roc_lpm, roc_logit)
+
+# Graficar
+ggplot(roc_both, aes(x = 1 - specificity, y = sensitivity, color = Modelo)) +
+  geom_line(size = 1.1) +
+  geom_abline(linetype = "dashed", color = "gray50") +
+  theme_minimal(base_size = 13) +
+  ggtitle("Curva ROC Comparativa: LPM vs Logit penalizado") +
+  labs(x = "1 - Especificidad", y = "Sensibilidad", color = "Modelo") +
+  scale_color_manual(values = c("#0072B2", "#D55E00")) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```  
+
+
+```{r}
+### 3.4. Importancia de las caracteristicas
+# Importancia en LPM: coeficientes
+lm_fit <- extract_fit_parsnip(lm_wf)
+lm_fit %>%
+  tidy() %>%
+  arrange(desc(abs(estimate))) %>%
+  slice_head(n = 10) %>%
+  knitr::kable(digits = 3)
+
+# Importancia en Logit penalizado (glmnet)
+logit_fit <- extract_fit_parsnip(final_logit_wf)
+vip(logit_fit, num_features = 15) +
+  ggtitle("Importancia de características - Modelo Logit penalizado")
+```
+```{r}
+### 3.5. Exportación de predicciones a Kaggle Logit
+
+# --- Preparar base de test ---
+ids <- test_hogares_final$id  # guardar los IDs originales
+
+# --- Generar predicciones de probabilidad con el modelo final ---
+pred_test_logit <- predict(final_logit_wf, test, type = "prob")
+
+# --- Renombrar columna de probabilidad de pobreza ---
+pred_test_logit <- pred_test_logit %>%
+  mutate(
+    pobre = ifelse(`.pred_Pobre` >= 0.5, 1, 0),  # clasificación binaria
+    id = ids
+  ) %>%
+  select(id, pobre)
+
+# --- Crear nombre del archivo según los hiperparámetros ---
+lambda_str <- gsub("\\.", "_", as.character(round(best_logit$penalty, 4)))
+alpha_str  <- gsub("\\.", "_", as.character(round(best_logit$mixture, 4)))
+
+name <- paste0("Logit_lambda_", lambda_str, "_alpha_", alpha_str, ".csv")
+
+# --- Exportar ---
+write.csv(pred_test_logit, name, row.names = FALSE)
+
+# --- Verificación ---
+head(pred_test_logit)
+
+# Exportación de predicciones del modelo LPM
+
+# Predecir probabilidades para el conjunto de test con el modelo LPM
+pred_test_lpm <- predict(lm_wf, test, type = "numeric") %>%
+  mutate(
+    pobre = ifelse(.pred >= 0.5, 1, 0),  # umbral de decisión 0.5
+    id = ids
+  ) %>%
+  select(id, pobre)
+
+# Guardar archivo CSV con nombre distintivo
+name_lpm <- paste0("Lm_lambda_", lambda_str, "_alpha_", alpha_str, ".csv")
+
+write.csv(pred_test_lpm, name_lpm, row.names = FALSE, fileEncoding = "UTF-8")
+
+# Mostrar las primeras filas
+head(pred_test_lpm)
+
+
+```
+
+## 4. Conclusiones
+
+##### ____________ SEGUNDA PREDICCIÓN________########
+
+```{r}
+### 3.1. Seleccion de modelos y entrenamiento
+```
+
+```{r}
+
+library(tidyverse)
+library(tidymodels)
+library(themis)
+library(vip)
+library(glmnet)
+library(yardstick)
+library(forcats)
+library(gt)
+library(webshot2)
+
+set.seed(12665)
+
+### --- BASES DE DATOS ---
+train <- train_hogares_final
+test  <- test_hogares_final
+
+# Base limpia común (sin ID, con nombres correctos)
+train_base <- train %>%
+  rename(poor = Pobre) %>%
+  select(-id)
+
+# Versión para LPM (numérica)
+train_num <- train_base %>%
+  mutate(poor = as.numeric(poor))
+
+# Versión para Logit (factor)
+train_fac <- train_base %>%
+  mutate(
+    poor = as.factor(as.character(poor)),  # garantiza que sea factor de "0"/"1"
+    poor = fct_relevel(poor, "0", "1")     # asegura el orden correcto
+  )
+
+# Verificar
+str(train_fac$poor)
+table(train_fac$poor)
+
+# Base de test (sin id)
+test <- test %>% select(-id)
+```
+
+```{r}
+#-----------------------------
+### --- Split Y Validacion ---
+#-----------------------------
+
+split <- initial_split(train_fac, prop = 0.8, strata = poor)
+train_tr <- training(split)
+train_val <- testing(split)
+folds <- vfold_cv(train_tr, v = 5, strata = poor)
+
+#-----------------------------
+### --- Reciper Y Modelos ---
+#-----------------------------
+
+base_recipe_ <- recipe(poor ~ Clase + Dominio + Tipo_vivienda + Nper + Sexo + Edad + Nivel_educativo + Actividad_Ocup,
+                      data = train_fac) %>%
+  step_zv(all_predictors()) %>%
+  step_impute_median(all_numeric_predictors()) %>%
+  step_impute_mode(all_nominal_predictors()) %>%
+  step_dummy(all_nominal_predictors(), one_hot = TRUE) %>%
+  step_normalize(all_numeric_predictors())
+
+# Especificaciones de modelos
+lm_spec <- linear_reg() %>% set_engine("lm")
+
+# Ridge
+ridge_spec <- logistic_reg(penalty = tune(), mixture = 0) %>%
+  set_engine("glmnet") %>%
+  set_mode("classification")
+
+# Lasso
+lasso_spec <- logistic_reg(penalty = tune(), mixture = 1) %>%
+  set_engine("glmnet") %>%
+  set_mode("classification")
+
+# Workflows
+lm_wf <- workflow() %>% add_model(lm_spec) %>% add_recipe(base_recipe_)
+ridge_wf <- workflow() %>% add_model(ridge_spec) %>% add_recipe(base_recipe_)
+lasso_wf <- workflow() %>% add_model(lasso_spec) %>% add_recipe(base_recipe_)
+```
+
+```{r}
+
+# Crear tabla comparativa
+  
+tabla_modelos_2 <- tibble::tibble(
+  Modelo = c("LPM", "Ridge", "Lasso"),
+  Tipo = c("Regresión lineal", "Clasificación binaria", "Clasificación binaria"),
+  Motor = c("lm", "glmnet", "glmnet"),
+  Penalización = c("No aplica", "Sí (λ)", "Sí (λ)"),
+  Mezcla = c("No aplica", "α = 0", "α = 1"),
+  Receta = c("base_recipe", "base_recipe", "base_recipe")
+) %>%
+  gt() %>%
+  tab_header(title = md("**Especificaciones de modelos**")) %>%
+  cols_label(
+    Modelo = "Modelo",
+    Tipo = "Tipo de modelo",
+    Motor = "Motor",
+    Penalización = "¿Penalización?",
+    Mezcla = "Mezcla α",
+    Receta = "Receta usada"
+  )
+```
+
+```{r}
+
+# Exportar en HTML
+gtsave(tabla_modelos_2, "Tablas y Graficos/20.Especificaciones_modelos.html")
+
+# Exportar en PDF
+webshot2::webshot(
+  "Tablas y Graficos/20.Especificaciones_modelos.html",
+  "Tablas y Graficos/20.Especificaciones_modelos.pdf"
+)
+
+# Exportar en PNG
+gtsave(tabla_modelos_2, "Tablas y Graficos/20.Especificaciones_modelos.png")
+
+# Mostrar en pantalla
+tabla_modelos_2
+```
 
 
 ## ELASTIC NET
