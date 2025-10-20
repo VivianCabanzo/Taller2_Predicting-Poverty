@@ -70,7 +70,8 @@ pacman::p_load(
   ROCR,          # Curvas ROC, AUC y métricas de modelos
   xgboost,       # Algoritmo de Gradient Boosting optimizado
   doParallel,
-  yardstick
+  yardstick,
+  scales
 )
 
 # Verificar paquetes cargados
