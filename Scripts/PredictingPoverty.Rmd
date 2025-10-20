@@ -1922,6 +1922,125 @@ tabla_modelos_z
 ```
 
 
+```{r}
+### --- Hiperparámetros (modelo Logit penalizado) ---
+
+# Recipe correcto (usa train_fac o train_tr, ambas con poor=factor)
+logit_spec <- logistic_reg( penalty = tune(), mixture = tune()) %>%
+  set_engine("glmnet") %>%
+  set_mode("classification")
+
+logit_recipe <- recipe(poor ~ ., data = train_fac) %>%
+  step_zv(all_predictors()) %>%                     # <── Elimina columnas sin variación
+  step_impute_median(all_numeric_predictors()) %>%
+  step_impute_mode(all_nominal_predictors()) %>%
+  step_dummy(all_nominal_predictors(), one_hot = TRUE) %>%
+  step_normalize(all_numeric_predictors())
+
+logit_wf <- workflow() %>%
+  add_model(logit_spec) %>%
+  add_recipe(logit_recipe)
+
+# Se emplea validación cruzada estratificada (5-fold) para ajustar
+# los hiperparámetros lambda (penalty) y alpha (mixture)
+
+# Grilla moderada
+logit_grid <- grid_regular(
+  penalty(range = c(-4, -1)),
+  mixture(range = c(0, 1)),
+  levels = c(5, 5)
+)
+
+# Tuning con validación cruzada y métricas de desempeño
+logit_res <- tune_grid(
+  logit_wf,
+  resamples = folds,
+  grid = logit_grid,
+  metrics = metric_set(roc_auc, accuracy, f_meas),
+  control = control_grid(save_pred = TRUE, verbose = TRUE)
+)
+
+# Verificar notas
+show_notes(logit_res)
+
+# Seleccionar mejor modelo segun AUC
+best_logit <- select_best(logit_res, metric = "roc_auc")
+best_logit
+
+# Entrenar modelo final con mejores modelos
+final_logit_wf <- finalize_workflow(logit_wf, best_logit) %>%
+  fit(train_tr)
+
+```
+
+```{r}
+### --- Modelo LPM (para comparar con Logit) ---
+
+# la probabilidad numérica de ser pobre (0–1)
+lm_spec <- linear_reg() %>% 
+  set_engine("lm") %>%
+  set_mode("regression")
+
+# Creación de la receta de preprocesamiento
+lm_recipe <- recipe(poor ~ ., data = train_num) %>%
+  step_zv(all_predictors()) %>%                    # elimina variables sin variación
+  step_impute_median(all_numeric_predictors()) %>% # imputar medianas
+  step_impute_mode(all_nominal_predictors()) %>%   # imputar modas
+  step_dummy(all_nominal_predictors(), one_hot = TRUE) %>%  # crear dummies
+  step_normalize(all_numeric_predictors())         #  Estandariza variables numéricas (media=0, sd=1)
+
+lm_recipe
+
+# Workflows: combinación de modelo + receta
+lm_wf <- workflow() %>%
+  add_model(lm_spec) %>%
+  add_recipe(lm_recipe) %>%
+  fit(train_num)
+
+
+# Extraer pasos de cada receta
+pasos_lpm <- lm_recipe$steps %>% purrr::map_chr(~ class(.x)[1]) %>% stringr::str_remove("^step_")
+pasos_logit <- logit_recipe$steps %>% purrr::map_chr(~ class(.x)[1]) %>% stringr::str_remove("^step_")
+
+# Crear tabla comparativa
+tabla_recetas <- tibble::tibble(
+  Paso = seq_len(max(length(pasos_lpm), length(pasos_logit))),
+  LPM = dplyr::coalesce(purrr::map_chr(pasos_lpm, identity)[1:max(length(pasos_lpm), length(pasos_logit))], ""),
+  Logit = dplyr::coalesce(purrr::map_chr(pasos_logit, identity)[1:max(length(pasos_lpm), length(pasos_logit))], "")
+) %>%
+  gt() %>%
+  tab_header(
+    title = md("**Comparación de pasos de preprocesamiento: LPM vs Logit penalizado**")
+  ) %>%
+  cols_label(
+    Paso = "N°",
+    LPM = "Receta LPM",
+    Logit = "Receta Logit"
+  ) %>%
+  tab_options(
+    table.font.names = "Arial",
+    table.font.size = 12,
+    heading.title.font.size = 14,
+    column_labels.font.weight = "bold"
+  )
+
+# Exportar en HTML
+gtsave(tabla_recetas, "19.Comparacion_recetas_LPM_Logit.html")
+
+# Exportar en PDF
+webshot2::webshot(
+  "Tablas y Graficos/19.Comparacion_recetas_LPM_Logit.html",
+  "Tablas y Graficos/19.Comparacion_recetas_LPM_Logit.pdf"
+)
+
+# Exportar en PNG
+gtsave(tabla_recetas, "Tablas y Graficos/19.Comparacion_recetas_LPM_Logit.png")
+
+# Mostrar en pantalla
+tabla_recetas
+
+```
+
 
 
 ## ELASTIC NET
