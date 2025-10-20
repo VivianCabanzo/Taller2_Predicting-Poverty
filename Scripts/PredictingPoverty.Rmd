@@ -1810,6 +1810,118 @@ train_base <- train_R %>%
 train_num <- train_base %>%
   mutate(poor = as.numeric(poor))
 
+# Versión para Logit (factor)
+train_fac <- train_base %>%
+  mutate(
+    poor = as.factor(as.character(poor)),  # garantiza que sea factor de "0"/"1"
+    poor = fct_relevel(poor, "0", "1")     # asegura el orden correcto
+  )
+
+# Verificar
+str(train_fac$poor)
+table(train_fac$poor)
+
+# Base de test (sin id)
+test_z <- test %>% select(-id)
+```
+
+
+
+# División estratificada del dataset (80% entrenamiento, 20% validación)
+# Se mantiene la proporción de la variable respuesta
+
+```{r}
+### --- Split Y Validacion ---
+
+split <- initial_split(train_fac, prop = 0.8, strata = poor)
+train_tr <- training(split)
+train_val <- testing(split)
+folds <- vfold_cv(train_tr, v = 5, strata = poor)
+
+# Split específico para la base numérica
+split_num <- initial_split(train_num, prop = 0.8, strata = poor)
+train_tr_num <- training(split_num)
+train_val_num <- testing(split_num)
+
+
+#-----------------------------
+### --- Reciper Y Modelos ---
+#-----------------------------
+
+base_recipe <- recipe(poor ~ ., data = train_fac) %>%
+  step_zv(all_predictors()) %>%                               # Eliminar variables sin variación
+  step_impute_median(all_numeric_predictors()) %>%            # Imputar medianas
+  step_impute_mode(all_nominal_predictors()) %>%              # Imputar modas 
+  step_dummy(all_nominal_predictors(), one_hot = TRUE) %>%    # Codificación dummies
+  step_normalize(all_numeric_predictors())                    # Normalización de variables numéricas para asegurar que todas las variables contribuyan de    manera equitativa.
+
+# Especificaciones de modelos
+lm_spec <- linear_reg() %>% set_engine("lm")        # Modelo lineal clásico
+
+logit_spec <- logistic_reg(penalty = tune(),        # Modelo logit penalizado
+  mixture = tune()) %>% 
+  set_engine("glmnet") %>%
+  set_mode("classification")
+
+# Workflows: combinación de modelo + receta
+lm_wf <- workflow() %>% add_model(lm_spec) %>% add_recipe(base_recipe)
+logit_wf <- workflow() %>% add_model(logit_spec) %>% add_recipe(base_recipe)
+
+
+```
+
+```{r}
+
+# Crear tabla comparativa
+tabla_modelos_z <- tibble::tibble(
+  Modelo = c("LPM", "Logit penalizado"),
+  Tipo = c("Regresión lineal", "Clasificación binaria"),
+  Motor = c("lm", "glmnet"),
+  Penalización = c("No aplica", "Sí (lambda)"),
+  Mezcla = c("No aplica", "Sí (alpha)"),
+  Receta = c("base_recipe", "base_recipe"),
+  Workflow = c("lm_wf", "logit_wf")
+) %>%
+  gt() %>%
+  tab_header(
+    title = md("**Especificaciones de modelos y workflows**")
+  ) %>%
+  cols_label(
+    Modelo = "Modelo",
+    Tipo = "Tipo de modelo",
+    Motor = "Motor",
+    Penalización = "¿Penalización?",
+    Mezcla = "¿Mezcla?",
+    Receta = "Receta usada",
+    Workflow = "Workflow"
+  ) %>%
+  tab_options(
+    table.font.names = "Arial",
+    table.font.size = 12,
+    heading.title.font.size = 14,
+    column_labels.font.weight = "bold"
+  )
+```
+```{r}
+# Exportar en HTML
+gtsave(tabla_modelos_z, "Tablas y Graficos/18.Especificaciones_modelos.html")
+
+# Exportar en PDF
+webshot2::webshot(
+  "Tablas y Graficos/13.Especificaciones_modelos.html",
+  "Tablas y Graficos/13.Especificaciones_modelos.pdf"
+)
+
+# Exportar en PNG
+gtsave(tabla_modelos_z, "Tablas y Graficos/18.Especificaciones_modelos.png")
+
+# Mostrar en pantalla
+tabla_modelos_z
+
+
+```
+
+
 
 
 ## ELASTIC NET
